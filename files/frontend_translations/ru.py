@@ -1,7 +1,7 @@
 translation_strings = {
     "ABOUT": "О",
     "AUTOPLAY": "Автовоспроизведение",
-    "About": "О",
+    "About": "О нас",
     "Add a ": "Добавить ",
     "Browse your files": "Просмотреть файлы",
     "COMMENT": "КОММЕНТАРИЙ",
@@ -23,16 +23,16 @@ translation_strings = {
     "Edit media": "Редактировать медиа",
     "Edit profile": "Редактировать профиль",
     "Edit subtitle": "Редактировать субтитры",
-    "Featured": "Рекомендуемое",
+    "Featured": "Избранное",
     "Go": "Перейти",
     "History": "История",
     "Home": "Главная",
     "Language": "Язык",
     "Latest": "Последние",
-    "Liked media": "Понравившиеся медиа",
-    "Manage comments": "Управление комментариями",
-    "Manage media": "Управление медиа",
-    "Manage users": "Управление пользователями",
+    "Liked media": "Понравившиеся",
+    "Manage comments": "Упр. комментариями",
+    "Manage media": "Упр. медиа",
+    "Manage users": "Упр. пользователями",
     "Media": "Медиа",
     "Media was edited": "Медиа было отредактировано",
     "Members": "Участники",
@@ -83,6 +83,7 @@ translation_strings = {
     "view": "просмотр",
     "views": "просмотры",
     "yet": "еще",
+    "is a collection of animation films": "- коллекция авторской анимации"
 }
 
 replacement_strings = {

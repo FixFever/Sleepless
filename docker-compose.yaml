@@ -13,23 +13,23 @@ services:
       ENABLE_CELERY_SHORT: 'no'
       ENABLE_CELERY_LONG: 'no'
       ENABLE_MIGRATIONS: 'no'
-      PORTAL_NAME: 'Sleeplessness'
+      PORTAL_NAME: 'Sleepless'
       REDIS_LOCATION: 'redis://host.docker.internal:6379/1'
       POSTGRES_HOST: 'host.docker.internal'
       POSTGRES_USER: '${POSTGRES_USER}'
       POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
-      SECRET_KEY: '${SLEEPLESSNESS_SECRET_KEY}'
+      SECRET_KEY: '${SLEEPLESS_SECRET_KEY}'
     depends_on:
       - migrations
     restart: unless-stopped
     labels:
-      virtual.host: sleeplessness.${DOMAIN}
+      virtual.host: sleepless.${DOMAIN}
       virtual.port: 80
       virtual.tls-email: ${TLS_EMAIL}
       homepage.group: Media
-      homepage.name: Sleeplessness
-      homepage.icon: /icons/sleeplessness.png
-      homepage.href: https://sleeplessness.${DOMAIN}
+      homepage.name: Sleepless
+      homepage.icon: /icons/sleepless.png
+      homepage.href: https://sleepless.${DOMAIN}
       homepage.description: Collection of animation films
       
   celery_beat:
@@ -43,12 +43,12 @@ services:
       ENABLE_CELERY_SHORT: 'no'
       ENABLE_CELERY_LONG: 'no'
       ENABLE_MIGRATIONS: 'no'
-      PORTAL_NAME: 'Sleeplessness'
+      PORTAL_NAME: 'Sleepless'
       REDIS_LOCATION: 'redis://host.docker.internal:6379/1'
       POSTGRES_HOST: 'host.docker.internal'
       POSTGRES_USER: '${POSTGRES_USER}'
       POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
-      SECRET_KEY: '${SLEEPLESSNESS_SECRET_KEY}'
+      SECRET_KEY: '${SLEEPLESS_SECRET_KEY}'
     restart: unless-stopped
     
   celery:
@@ -61,12 +61,12 @@ services:
       ENABLE_NGINX: 'no'
       ENABLE_CELERY_BEAT: 'no'
       ENABLE_MIGRATIONS: 'no'
-      PORTAL_NAME: 'Sleeplessness'
+      PORTAL_NAME: 'Sleepless'
       REDIS_LOCATION: 'redis://host.docker.internal:6379/1'
       POSTGRES_HOST: 'host.docker.internal'
       POSTGRES_USER: '${POSTGRES_USER}'
       POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
-      SECRET_KEY: '${SLEEPLESSNESS_SECRET_KEY}'
+      SECRET_KEY: '${SLEEPLESS_SECRET_KEY}'
     depends_on:
       - migrations
     restart: unless-stopped
@@ -82,14 +82,14 @@ services:
       ENABLE_CELERY_SHORT: 'no'
       ENABLE_CELERY_LONG: 'no'
       ENABLE_CELERY_BEAT: 'no'
-      ADMIN_USER: '${SLEEPLESSNESS_ADMIN_USER}'
-      ADMIN_EMAIL: '${SLEEPLESSNESS_ADMIN_EMAIL}'
-      ADMIN_PASSWORD: '${SLEEPLESSNESS_ADMIN_PASSWORD}'
-      PORTAL_NAME: 'Sleeplessness'
+      ADMIN_USER: '${SLEEPLESS_ADMIN_USER}'
+      ADMIN_EMAIL: '${SLEEPLESS_ADMIN_EMAIL}'
+      ADMIN_PASSWORD: '${SLEEPLESS_ADMIN_PASSWORD}'
+      PORTAL_NAME: 'Sleepless'
       REDIS_LOCATION: 'redis://host.docker.internal:6379/1'
       POSTGRES_HOST: 'host.docker.internal'
       POSTGRES_USER: '${POSTGRES_USER}'
       POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
-      SECRET_KEY: '${SLEEPLESSNESS_SECRET_KEY}'
+      SECRET_KEY: '${SLEEPLESS_SECRET_KEY}'
     command: "./deploy/docker/prestart.sh"
     restart: on-failure

@@ -7,7 +7,7 @@ DEBUG = False
 
 # PORTAL NAME, this is the portal title and
 # is also shown on several places as emails
-PORTAL_NAME = "Sleeplessness"
+PORTAL_NAME = "Sleepless"
 PORTAL_DESCRIPTION = "Коллекция авторской анимации"
 TIME_ZONE = "Europe/Moscow"
 
@@ -48,9 +48,9 @@ ALLOW_RATINGS = False
 ALLOW_RATINGS_CONFIRMED_EMAIL_ONLY = True
 
 # ip of the server should be part of this
-ALLOWED_HOSTS = ["*", "mediacms.io", "127.0.0.1", "localhost", "sleeplessness.fixfever.ru"]
+ALLOWED_HOSTS = ["*", "mediacms.io", "127.0.0.1", "localhost", "sleepless.fixfever.ru"]
 
-FRONTEND_HOST = "https://sleeplessness.fixfever.ru"
+FRONTEND_HOST = "https://sleepless.fixfever.ru"
 # this variable - along with SSL_FRONTEND_HOST is used on several places
 # as email where a URL need appear etc
 
@@ -114,14 +114,14 @@ SITE_ID = 1
 # PORTAL_LOGO_DARK_SVG = ""
 # PORTAL_LOGO_LIGHT_SVG = ""
 # place the files on static/images folder
-PORTAL_LOGO_DARK_SVG = "/static/images/sleeplessness_logo_dark.svg"
+PORTAL_LOGO_DARK_SVG = "/static/images/sleepless_logo_dark.svg"
 PORTAL_LOGO_DARK_PNG = "/static/images/logo_dark.png"
-PORTAL_LOGO_LIGHT_SVG = "/static/images/sleeplessness_logo_light.svg"
+PORTAL_LOGO_LIGHT_SVG = "/static/images/sleepless_logo_light.svg"
 PORTAL_LOGO_LIGHT_PNG = "/static/images/logo_dark.png"
 
 # paths to extra css files to be included, eg "/static/css/custom.css"
 # place css inside static/css folder
-EXTRA_CSS_PATHS = ["/static/css/sleeplessness.css"]
+EXTRA_CSS_PATHS = ["/static/css/sleepless.css"]
 # protection agains anonymous users
 # per ip address limit, for actions as like/dislike/report
 TIME_TO_ACTION_ANONYMOUS = 10 * 60
