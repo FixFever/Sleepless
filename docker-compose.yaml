@@ -1,3 +1,7 @@
+# On error 
+# exec ./deploy/docker/entrypoint.sh: no such file or directory
+# Change *.sh files in ./deploy/docker CRLF to LF 
+
 services:
 
   mediacms:
