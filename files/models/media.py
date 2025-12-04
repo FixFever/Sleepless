@@ -282,7 +282,7 @@ class Media(models.Model):
                 self.allow_whisper_transcribe != self.__original_allow_whisper_transcribe or self.allow_whisper_transcribe_and_translate != self.__original_allow_whisper_transcribe_and_translate
             )
 
-            if transcription_changed and self.media_type == "video":
+            if transcription_changed and self.media_type in ["video", "audio"]:
                 self.transcribe_function()
 
             # Update the original values for next comparison
@@ -329,10 +329,17 @@ class Media(models.Model):
 
             if to_transcribe:
                 TranscriptionRequest.objects.create(media=self, translate_to_english=False)
-                tasks.whisper_transcribe.delay(self.friendly_token, translate_to_english=False)
+                tasks.whisper_transcribe.apply_async(
+                    args=[self.friendly_token, False],
+                    countdown=10,
+                )
+
             if to_transcribe_and_translate:
                 TranscriptionRequest.objects.create(media=self, translate_to_english=True)
-                tasks.whisper_transcribe.delay(self.friendly_token, translate_to_english=True)
+                tasks.whisper_transcribe.apply_async(
+                    args=[self.friendly_token, True],
+                    countdown=10,
+                )
 
     def update_search_vector(self):
         """
@@ -357,6 +364,10 @@ class Media(models.Model):
             a_tags,
             b_tags,
         ]
+
+        for subtitle in self.subtitles.all():
+            items.append(subtitle.subtitle_text)
+
         items = [item for item in items if item]
         text = " ".join(items)
         text = " ".join([token for token in text.lower().split(" ") if token not in STOP_WORDS])
@@ -406,11 +417,11 @@ class Media(models.Model):
                 self.media_type = "image"
             elif kind == "pdf":
                 self.media_type = "pdf"
-
-        if self.media_type in ["audio", "image", "pdf"]:
+        if self.media_type in ["image", "pdf"]:
             self.encoding_status = "success"
         else:
             ret = helpers.media_file_info(self.media_file.path)
+
             if ret.get("fail"):
                 self.media_type = ""
                 self.encoding_status = "fail"
@@ -759,6 +770,8 @@ class Media(models.Model):
             return helpers.url_from_path(self.uploaded_thumbnail.path)
         if self.thumbnail:
             return helpers.url_from_path(self.thumbnail.path)
+        if self.media_type == "audio":
+            return helpers.url_from_path("userlogos/poster_audio.jpg")
         return None
 
     @property
@@ -772,6 +785,9 @@ class Media(models.Model):
             return helpers.url_from_path(self.uploaded_poster.path)
         if self.poster:
             return helpers.url_from_path(self.poster.path)
+        if self.media_type == "audio":
+            return helpers.url_from_path("userlogos/poster_audio.jpg")
+
         return None
 
     @property
