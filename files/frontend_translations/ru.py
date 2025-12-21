@@ -41,7 +41,7 @@ translation_strings = {
     "Comments are disabled": "Комментарии отключены",
     "Confirm": "Подтвердить",
     "Confirm Action": "Подтвердить действие",
-    "Contact": "Контакт",
+    "Contact": "Контакты",
     "Copy Media": "Копировать медиа",
     "Create": "Создать",
     "DELETE": "УДАЛИТЬ",
