@@ -13,6 +13,7 @@ urlpatterns = [
     path("i18n/", include("django.conf.urls.i18n")),
     re_path(r"^$", views.index),
     re_path(r"^about", views.about, name="about"),
+    path("sitemap.xml", views.sitemap, name="sitemap"),
     re_path(r"^setlanguage", views.setlanguage, name="setlanguage"),
     re_path(r"^add_subtitle", views.add_subtitle, name="add_subtitle"),
     re_path(r"^edit_subtitle", views.edit_subtitle, name="edit_subtitle"),
@@ -113,7 +114,6 @@ urlpatterns = [
     re_path("^(?P<slug>[\w.-]*)$", views.get_page, name="get_page"),  # noqa: W605
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
-
 if settings.USERS_NEEDS_TO_BE_APPROVED:
     urlpatterns.append(re_path(r"^approval_required/", views.approval_required, name="approval_required"))
 
@@ -125,6 +125,3 @@ if hasattr(settings, "USE_IDENTITY_PROVIDERS") and settings.USE_IDENTITY_PROVIDE
     urlpatterns.append(re_path(r"^accounts/login", views.custom_login_view, name='login'))
 else:
     urlpatterns.append(path('accounts/login', LoginView.as_view(), name='login_system'))
-
-if hasattr(settings, "GENERATE_SITEMAP") and settings.GENERATE_SITEMAP:
-    urlpatterns.append(path("sitemap.xml", views.sitemap, name="sitemap"))
