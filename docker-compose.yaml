@@ -9,6 +9,8 @@ services:
     container_name: mediacms
     ports:
       - 5454:80
+    networks:
+      - apps
     volumes:
       - ./:/home/mediacms.io/mediacms/
       - M:\\mediacms:/home/mediacms.io/mediacms/media_files
@@ -18,8 +20,8 @@ services:
       ENABLE_CELERY_LONG: 'no'
       ENABLE_MIGRATIONS: 'no'
       PORTAL_NAME: 'Sleepless'
-      REDIS_LOCATION: 'redis://host.docker.internal:6379/1'
-      POSTGRES_HOST: 'host.docker.internal'
+      REDIS_LOCATION: 'redis://redis:6379/1'
+      POSTGRES_HOST: 'postgres'
       POSTGRES_USER: '${POSTGRES_USER}'
       POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
       SECRET_KEY: '${SLEEPLESS_SECRET_KEY}'
@@ -36,11 +38,13 @@ services:
       homepage.href: https://sleepless.${DOMAIN}
       homepage.description: Collection of animation films
       
-  celery_beat:
+  celery-beat:
     image: mediacms/mediacms:latest
-    container_name: celery_beat
+    container_name: celery-beat
     volumes_from:
       - mediacms:rw
+    networks:
+      - apps
     environment:
       ENABLE_UWSGI: 'no'
       ENABLE_NGINX: 'no'
@@ -48,38 +52,50 @@ services:
       ENABLE_CELERY_LONG: 'no'
       ENABLE_MIGRATIONS: 'no'
       PORTAL_NAME: 'Sleepless'
-      REDIS_LOCATION: 'redis://host.docker.internal:6379/1'
-      POSTGRES_HOST: 'host.docker.internal'
+      REDIS_LOCATION: 'redis://redis:6379/1'
+      POSTGRES_HOST: 'postgres'
       POSTGRES_USER: '${POSTGRES_USER}'
       POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
       SECRET_KEY: '${SLEEPLESS_SECRET_KEY}'
     restart: unless-stopped
-    
+    labels:
+      homepage.group: Containers
+      homepage.name: Celery-beat
+      homepage.icon: /icons/sleepless.png
+      
   celery:
     image: mediacms/mediacms:latest
     container_name: celery
     volumes_from:
       - mediacms:rw
+    networks:
+      - apps
     environment:
       ENABLE_UWSGI: 'no'
       ENABLE_NGINX: 'no'
       ENABLE_CELERY_BEAT: 'no'
       ENABLE_MIGRATIONS: 'no'
       PORTAL_NAME: 'Sleepless'
-      REDIS_LOCATION: 'redis://host.docker.internal:6379/1'
-      POSTGRES_HOST: 'host.docker.internal'
+      REDIS_LOCATION: 'redis://redis:6379/1'
+      POSTGRES_HOST: 'postgres'
       POSTGRES_USER: '${POSTGRES_USER}'
       POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
       SECRET_KEY: '${SLEEPLESS_SECRET_KEY}'
     depends_on:
       - migrations
     restart: unless-stopped
+    labels:
+      homepage.group: Containers
+      homepage.name: Celery
+      homepage.icon: /icons/sleepless.png
 
   migrations:
     image: mediacms/mediacms:latest
     container_name: migrations
     volumes:
       - ./:/home/mediacms.io/mediacms/
+    networks:
+      - apps
     environment:
       ENABLE_UWSGI: 'no'
       ENABLE_NGINX: 'no'
@@ -90,10 +106,15 @@ services:
       ADMIN_EMAIL: '${SLEEPLESS_ADMIN_EMAIL}'
       ADMIN_PASSWORD: '${SLEEPLESS_ADMIN_PASSWORD}'
       PORTAL_NAME: 'Sleepless'
-      REDIS_LOCATION: 'redis://host.docker.internal:6379/1'
-      POSTGRES_HOST: 'host.docker.internal'
+      REDIS_LOCATION: 'redis://redis:6379/1'
+      POSTGRES_HOST: 'postgres'
       POSTGRES_USER: '${POSTGRES_USER}'
       POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
       SECRET_KEY: '${SLEEPLESS_SECRET_KEY}'
     command: "./deploy/docker/prestart.sh"
     restart: on-failure
+    
+networks:
+  apps:
+    external: true
+    name: server_apps
