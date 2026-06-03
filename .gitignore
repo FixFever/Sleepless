@@ -39,3 +39,5 @@ static/video_editor/videos/sample-video.mp3
 celerybeat-schedule-shm
 celerybeat-schedule-wal
 templates/todo-MS4.md
+.secret_key
+.secret_key.lock
