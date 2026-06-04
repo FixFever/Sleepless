@@ -29,9 +29,11 @@ services:
       - migrations
     restart: unless-stopped
     labels:
-      virtual.host: sleepless.${DOMAIN}
-      virtual.port: 80
-      virtual.tls-email: ${TLS_EMAIL}
+      traefik.enable: true
+      traefik.http.routers.sleepless.rule: Host(`sleepless.${DOMAIN}`)
+      traefik.http.routers.sleepless.entrypoints: websecure
+      traefik.http.routers.sleepless.tls.certresolver: letsencrypt
+      traefik.http.services.sleepless.loadbalancer.server.port: 80
       homepage.group: Media
       homepage.name: Sleepless
       homepage.icon: /icons/sleepless.png
