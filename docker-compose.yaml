@@ -9,8 +9,6 @@ services:
     container_name: mediacms
     ports:
       - 5454:80
-    networks:
-      - apps
     volumes:
       - ./:/home/mediacms.io/mediacms/
       - M:\\mediacms:/home/mediacms.io/mediacms/media_files
@@ -20,8 +18,8 @@ services:
       ENABLE_CELERY_LONG: 'no'
       ENABLE_MIGRATIONS: 'no'
       PORTAL_NAME: 'Sleepless'
-      REDIS_LOCATION: 'redis://redis:6379/1'
-      POSTGRES_HOST: 'postgres'
+      REDIS_LOCATION: 'redis://host.docker.internal:6379/1'
+      POSTGRES_HOST: 'host.docker.internal'
       POSTGRES_USER: '${POSTGRES_USER}'
       POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
       SECRET_KEY: '${SLEEPLESS_SECRET_KEY}'
@@ -45,8 +43,6 @@ services:
     container_name: celery-beat
     volumes_from:
       - mediacms:rw
-    networks:
-      - apps
     environment:
       ENABLE_UWSGI: 'no'
       ENABLE_NGINX: 'no'
@@ -54,8 +50,8 @@ services:
       ENABLE_CELERY_LONG: 'no'
       ENABLE_MIGRATIONS: 'no'
       PORTAL_NAME: 'Sleepless'
-      REDIS_LOCATION: 'redis://redis:6379/1'
-      POSTGRES_HOST: 'postgres'
+      REDIS_LOCATION: 'redis://host.docker.internal:6379/1'
+      POSTGRES_HOST: 'host.docker.internal'
       POSTGRES_USER: '${POSTGRES_USER}'
       POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
       SECRET_KEY: '${SLEEPLESS_SECRET_KEY}'
@@ -70,16 +66,14 @@ services:
     container_name: celery
     volumes_from:
       - mediacms:rw
-    networks:
-      - apps
     environment:
       ENABLE_UWSGI: 'no'
       ENABLE_NGINX: 'no'
       ENABLE_CELERY_BEAT: 'no'
       ENABLE_MIGRATIONS: 'no'
       PORTAL_NAME: 'Sleepless'
-      REDIS_LOCATION: 'redis://redis:6379/1'
-      POSTGRES_HOST: 'postgres'
+      REDIS_LOCATION: 'redis://host.docker.internal:6379/1'
+      POSTGRES_HOST: 'host.docker.internal'
       POSTGRES_USER: '${POSTGRES_USER}'
       POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
       SECRET_KEY: '${SLEEPLESS_SECRET_KEY}'
@@ -96,8 +90,6 @@ services:
     container_name: migrations
     volumes:
       - ./:/home/mediacms.io/mediacms/
-    networks:
-      - apps
     environment:
       ENABLE_UWSGI: 'no'
       ENABLE_NGINX: 'no'
@@ -108,15 +100,10 @@ services:
       ADMIN_EMAIL: '${SLEEPLESS_ADMIN_EMAIL}'
       ADMIN_PASSWORD: '${SLEEPLESS_ADMIN_PASSWORD}'
       PORTAL_NAME: 'Sleepless'
-      REDIS_LOCATION: 'redis://redis:6379/1'
-      POSTGRES_HOST: 'postgres'
+      REDIS_LOCATION: 'redis://host.docker.internal:6379/1'
+      POSTGRES_HOST: 'host.docker.internal'
       POSTGRES_USER: '${POSTGRES_USER}'
       POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
       SECRET_KEY: '${SLEEPLESS_SECRET_KEY}'
     command: "./deploy/docker/prestart.sh"
     restart: on-failure
-    
-networks:
-  apps:
-    external: true
-    name: server_apps
