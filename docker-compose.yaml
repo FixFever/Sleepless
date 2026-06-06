@@ -5,7 +5,9 @@
 services:
 
   mediacms:
-    image: mediacms/mediacms:latest
+    build: 
+      context: .
+      dockerfile: Dockerfile
     container_name: mediacms
     networks:
       - server_default
@@ -39,7 +41,9 @@ services:
       homepage.description: Collection of animation films
       
   celery-beat:
-    image: mediacms/mediacms:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: celery-beat
     networks:
       - server_default
@@ -64,7 +68,9 @@ services:
       homepage.icon: /icons/sleepless.png
       
   celery:
-    image: mediacms/mediacms:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: celery
     networks:
       - server_default
@@ -90,7 +96,9 @@ services:
       homepage.icon: /icons/sleepless.png
 
   migrations:
-    image: mediacms/mediacms:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     container_name: migrations    
     networks:
       - server_default
