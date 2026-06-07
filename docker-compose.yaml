@@ -9,6 +9,8 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: mediacms
+    ports:
+      - 5454:80
     networks:
       - server_default
     volumes:
