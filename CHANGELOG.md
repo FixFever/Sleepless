@@ -1,5 +1,11 @@
 # Changelog
 
+## [8.3.3](https://github.com/mediacms-io/mediacms/compare/v8.3.2...v8.3.3) (2026-07-08)
+
+### Bug Fixes
+
+* private media and playlists ([#1549](https://github.com/mediacms-io/mediacms/issues/1549)) ([44715e4](https://github.com/mediacms-io/mediacms/commit/44715e4eb348a4464124b449b801ea8f6653c6dc))
+
 ## [8.3.2](https://github.com/mediacms-io/mediacms/compare/v8.3.1...v8.3.2) (2026-06-24)
 
 ### Bug Fixes
