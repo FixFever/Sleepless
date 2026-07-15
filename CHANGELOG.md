@@ -1,5 +1,11 @@
 # Changelog
 
+## [8.3.4](https://github.com/mediacms-io/mediacms/compare/v8.3.3...v8.3.4) (2026-07-15)
+
+### Bug Fixes
+
+* use shutil ([e421546](https://github.com/mediacms-io/mediacms/commit/e421546e580efac3cbf19b8a84efc5e9f013b194))
+
 ## [8.3.3](https://github.com/mediacms-io/mediacms/compare/v8.3.2...v8.3.3) (2026-07-08)
 
 ### Bug Fixes
