@@ -1,5 +1,46 @@
 # Changelog
 
+## [8.3.4](https://github.com/mediacms-io/mediacms/compare/v8.3.3...v8.3.4) (2026-07-15)
+
+### Bug Fixes
+
+* use shutil ([e421546](https://github.com/mediacms-io/mediacms/commit/e421546e580efac3cbf19b8a84efc5e9f013b194))
+
+## [8.3.3](https://github.com/mediacms-io/mediacms/compare/v8.3.2...v8.3.3) (2026-07-08)
+
+### Bug Fixes
+
+* private media and playlists ([#1549](https://github.com/mediacms-io/mediacms/issues/1549)) ([44715e4](https://github.com/mediacms-io/mediacms/commit/44715e4eb348a4464124b449b801ea8f6653c6dc))
+
+## [8.3.2](https://github.com/mediacms-io/mediacms/compare/v8.3.1...v8.3.2) (2026-06-24)
+
+### Bug Fixes
+
+* nginx traversal ([#1545](https://github.com/mediacms-io/mediacms/issues/1545)) ([a223f0f](https://github.com/mediacms-io/mediacms/commit/a223f0fd6015305d8f620474ef0d84ec5869ea97))
+
+## [8.3.1](https://github.com/mediacms-io/mediacms/compare/v8.3.0...v8.3.1) (2026-06-23)
+
+### Bug Fixes
+
+* update documentation regarding plugin ([#1544](https://github.com/mediacms-io/mediacms/issues/1544)) ([15e9e50](https://github.com/mediacms-io/mediacms/commit/15e9e509e5a27745b8aff575d59d93a7f33e0f57))
+
+## [8.3.0](https://github.com/mediacms-io/mediacms/compare/v8.2.1...v8.3.0) (2026-06-19)
+
+### Features
+
+* split moodle plugin into 2 ([d02dfcf](https://github.com/mediacms-io/mediacms/commit/d02dfcf7d60c4c26ce222b58cd2a178e12f6b78a))
+
+### Documentation
+
+* Moodle plugin doc ([#1539](https://github.com/mediacms-io/mediacms/issues/1539)) ([8a59eb6](https://github.com/mediacms-io/mediacms/commit/8a59eb6977c48c0c63d586332db4921fc67dba18))
+* Moodle Plugin Documentation ([#1537](https://github.com/mediacms-io/mediacms/issues/1537)) ([7ee720f](https://github.com/mediacms-io/mediacms/commit/7ee720fee4ac1d416bf1614b7447a987a018bb01))
+
+## [8.2.1](https://github.com/mediacms-io/mediacms/compare/v8.2.0...v8.2.1) (2026-06-07)
+
+### Bug Fixes
+
+* SAML provider add guard to skip empty mappings before iterating ([#1536](https://github.com/mediacms-io/mediacms/issues/1536)) ([9da6a85](https://github.com/mediacms-io/mediacms/commit/9da6a85ad86f5092edb96495eeb1cca22d5334bf))
+
 ## [8.2.0](https://github.com/mediacms-io/mediacms/compare/v8.1.3...v8.2.0) (2026-05-31)
 
 ### Features
