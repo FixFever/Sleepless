@@ -1,66 +1,128 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:video="http://www.google.com/schemas/sitemap-video/1.1">
 {% load static %}
-	<url>
-		<loc>{{ FRONTEND_HOST }}</loc>
-		<changefreq>always</changefreq>
-	</url>
-	<url>
-		<loc>{{ FRONTEND_HOST }}/featured</loc>
-		<changefreq>daily</changefreq>
-	</url>
-	<url>
-		<loc>{{ FRONTEND_HOST }}/recommended</loc>
-		<changefreq>always</changefreq>
-	</url>
-	<url>
-		<loc>{{ FRONTEND_HOST }}/latest</loc>
-		<changefreq>hourly</changefreq>
-	</url>
-	<url>
-		<loc>{{ FRONTEND_HOST }}/members</loc>
-		<changefreq>daily</changefreq>
-	</url>
-	<url>
-		<loc>{{ FRONTEND_HOST }}/tags</loc>
-		<changefreq>daily</changefreq>
-	</url>
-	<url>
-		<loc>{{ FRONTEND_HOST }}/categories</loc>
-		<changefreq>weekly</changefreq>
-	</url>
-	<url>
-		<loc>{{ FRONTEND_HOST }}/history</loc>
-		<changefreq>always</changefreq>
-	</url>
-	<url>
-		<loc>{{ FRONTEND_HOST }}/liked</loc>
-	</url>
-	<url>
-		<loc>{{ FRONTEND_HOST }}/about</loc>
-		<changefreq>monthly</changefreq>
-	</url>
-	<url>
-		<loc>{{ FRONTEND_HOST }}/tos</loc>
-		<changefreq>monthly</changefreq>
-	</url>
-	<url>
-		<loc>{{ FRONTEND_HOST }}/contact</loc>
-		<changefreq>never</changefreq>
-	</url>
-	{% for media_object in media %}
-	<url>
-		<loc>{{ FRONTEND_HOST}}/view?m={{ media_object.friendly_token }}</loc>
-	</url>
-	{% endfor %}
-	{% for playlist_object in playlists %}
-	<url>
-		<loc>{{ FRONTEND_HOST}}/playlists/{{ playlist_object.friendly_token }}</loc>
-	</url>
-	{% endfor %}
-	{% for user_object in users %}
-	<url>
-		<loc>{{ FRONTEND_HOST}}/user/{{ user_object.username }}/</loc>
-	</url>
-	{% endfor %}
+    <url>
+        <loc>{{ FRONTEND_HOST }}</loc>
+        <changefreq>always</changefreq>
+        <priority>1.0</priority>
+    </url>
+    <url>
+        <loc>{{ FRONTEND_HOST }}/featured</loc>
+        <changefreq>daily</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>{{ FRONTEND_HOST }}/recommended</loc>
+        <changefreq>always</changefreq>
+        <priority>0.8</priority>
+    </url>
+    <url>
+        <loc>{{ FRONTEND_HOST }}/latest</loc>
+        <changefreq>hourly</changefreq>
+        <priority>0.9</priority>
+    </url>
+    <url>
+        <loc>{{ FRONTEND_HOST }}/members</loc>
+        <changefreq>daily</changefreq>
+        <priority>0.5</priority>
+    </url>
+    <url>
+        <loc>{{ FRONTEND_HOST }}/tags</loc>
+        <changefreq>daily</changefreq>
+        <priority>0.5</priority>
+    </url>
+    <url>
+        <loc>{{ FRONTEND_HOST }}/categories</loc>
+        <changefreq>weekly</changefreq>
+        <priority>0.5</priority>
+    </url>
+    <url>
+        <loc>{{ FRONTEND_HOST }}/history</loc>
+        <changefreq>always</changefreq>
+        <priority>0.3</priority>
+    </url>
+    <url>
+        <loc>{{ FRONTEND_HOST }}/liked</loc>
+        <changefreq>always</changefreq>
+        <priority>0.3</priority>
+    </url>
+    <url>
+        <loc>{{ FRONTEND_HOST }}/about</loc>
+        <changefreq>monthly</changefreq>
+        <priority>0.3</priority>
+    </url>
+    <url>
+        <loc>{{ FRONTEND_HOST }}/tos</loc>
+        <changefreq>monthly</changefreq>
+        <priority>0.3</priority>
+    </url>
+    <url>
+        <loc>{{ FRONTEND_HOST }}/contact</loc>
+        <changefreq>never</changefreq>
+        <priority>0.3</priority>
+    </url>
+    
+    {% for media_object in media %}
+    <url>
+        <loc>{{ FRONTEND_HOST }}/view?m={{ media_object.friendly_token }}</loc>
+        {% if media_object.edit_date %}
+        <lastmod>{{ media_object.edit_date|date:"Y-m-d" }}</lastmod>
+        {% endif %}
+        <changefreq>weekly</changefreq>
+        <priority>0.8</priority>
+        
+        {% if media_object.media_type == "video" and media_object.encoding_status == "success" %}
+        <video:video>
+            <video:title>{{ media_object.title|escape }}</video:title>
+            <video:description>{{ media_object.description|striptags|escape|slice:":2048" }}</video:description>
+            <video:thumbnail_loc>{{ FRONTEND_HOST }}{{ media_object.poster_url }}</video:thumbnail_loc>
+            
+            {% if media_object.original_media_url %}
+            <video:content_loc>{{ FRONTEND_HOST }}{{ media_object.original_media_url }}</video:content_loc>
+            {% endif %}
+            
+            <video:duration>{{ media_object.duration }}</video:duration>
+            <video:publication_date>{{ media_object.add_date|date:"Y-m-d\TH:i:s+00:00" }}</video:publication_date>
+            
+            {% if media_object.user %}
+            <video:uploader>{{ media_object.user.username|escape }}</video:uploader>
+            {% endif %}
+            
+            <video:live>no</video:live>
+            
+            {% with media_object.category.all as categories %}
+                {% if categories %}
+                    {% for category in categories|slice:":1" %}
+                        <video:category>{{ category.title|escape }}</video:category>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            {% if media_object.tags.all %}
+                <video:tag>{{ media_object.tags.all|join:", "|escape }}</video:tag>
+            {% endif %}
+        </video:video>
+        {% endif %}
+    </url>
+    {% endfor %}
+    
+    {% for playlist_object in playlists %}
+    <url>
+        <loc>{{ FRONTEND_HOST }}/playlists/{{ playlist_object.friendly_token }}</loc>
+        {% if playlist_object.edit_date %}
+        <lastmod>{{ playlist_object.edit_date|date:"Y-m-d" }}</lastmod>
+        {% endif %}
+        <changefreq>weekly</changefreq>
+        <priority>0.6</priority>
+    </url>
+    {% endfor %}
+    
+    {% for user_object in users %}
+    <url>
+        <loc>{{ FRONTEND_HOST }}/user/{{ user_object.username }}/</loc>
+        <changefreq>weekly</changefreq>
+        <priority>0.4</priority>
+    </url>
+    {% endfor %}
 </urlset>
