@@ -483,7 +483,7 @@ if os.environ.get("TESTING"):
     CELERY_TASK_ALWAYS_EAGER = True
 
 # if True, only show original, don't perform any action on videos
-DO_NOT_TRANSCODE_VIDEO = True
+DO_NOT_TRANSCODE_VIDEO = False
 
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
