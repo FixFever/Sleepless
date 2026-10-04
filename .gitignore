@@ -42,3 +42,4 @@ templates/todo-MS4.md
 .secret_key
 .secret_key.lock
 /.github
+**/__pycache__/

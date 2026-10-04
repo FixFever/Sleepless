@@ -302,6 +302,7 @@ INSTALLED_APPS = [
     "rbac.apps.RbacConfig",
     "identity_providers.apps.IdentityProvidersConfig",
     "lti.apps.LtiConfig",
+    "migrationservice.apps.MigrationServiceConfig",
     "debug_toolbar",
     "mptt",
     "crispy_forms",
@@ -576,6 +577,12 @@ USE_SAML = False
 USE_RBAC = False
 USE_IDENTITY_PROVIDERS = False
 USE_LTI = False  # Enable LTI 1.3 integration
+
+MIGRATION_PAGE_SIZE = 3
+MIGRATION_API_TIMEOUT = 60
+MIGRATION_DOWNLOAD_TIMEOUT = 60 * 30
+MIGRATION_MAX_RETRIES = 5
+
 JAZZMIN_UI_TWEAKS = {"theme": "flatly"}
 
 USE_ROUNDED_CORNERS = True

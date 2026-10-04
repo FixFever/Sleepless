@@ -1,5 +1,33 @@
 # Changelog
 
+## [9.1.0](https://github.com/mediacms-io/mediacms/compare/v9.0.0...v9.1.0) (2026-10-01)
+
+### Features
+
+* LTI changes for ItsLearning LMS support ([#1596](https://github.com/mediacms-io/mediacms/issues/1596)) ([db74610](https://github.com/mediacms-io/mediacms/commit/db74610908c7575310159f472e1b3b7759d1cae7))
+
+## [9.0.0](https://github.com/mediacms-io/mediacms/compare/v8.4.0...v9.0.0) (2026-10-01)
+
+### ⚠ BREAKING CHANGES
+
+* migrate media from Kaltura, YouTube and Panopto (#1571)
+
+### Features
+
+* migrate media from Kaltura, YouTube and Panopto ([#1571](https://github.com/mediacms-io/mediacms/issues/1571)) ([cb14ea9](https://github.com/mediacms-io/mediacms/commit/cb14ea94f79960180550cafe6f207690a75a9ff9))
+
+## [8.4.0](https://github.com/mediacms-io/mediacms/compare/v8.3.5...v8.4.0) (2026-08-25)
+
+### Features
+
+* trigger release ([6efb9a4](https://github.com/mediacms-io/mediacms/commit/6efb9a494a8c0dcdf2264f4adc0ff49b892417ea))
+
+## [8.3.5](https://github.com/mediacms-io/mediacms/compare/v8.3.4...v8.3.5) (2026-08-25)
+
+### Bug Fixes
+
+* subtitles errors ([#1560](https://github.com/mediacms-io/mediacms/issues/1560)) ([7d25502](https://github.com/mediacms-io/mediacms/commit/7d25502050865ed3303682e1f88f8851b6e85ab0))
+
 ## [8.3.4](https://github.com/mediacms-io/mediacms/compare/v8.3.3...v8.3.4) (2026-07-15)
 
 ### Bug Fixes
