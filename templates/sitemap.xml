@@ -75,13 +75,13 @@
         {% if media_object.media_type == "video" and media_object.encoding_status == "success" %}
         <video:video>
             <video:title>{{ media_object.title|escape }}</video:title>
-            <video:description>{{ media_object.description|striptags|escape|slice:":2048" }}</video:description>
+            <video:description>{{ media_object.description|striptags|escape|slice:":2000" }}</video:description>
             <video:thumbnail_loc>{{ FRONTEND_HOST }}{{ media_object.poster_url }}</video:thumbnail_loc>
             
             {% if media_object.original_media_url %}
             <video:content_loc>{{ FRONTEND_HOST }}{{ media_object.original_media_url }}</video:content_loc>
             {% endif %}
-            
+            <video:player_loc>{{ FRONTEND_HOST }}/embed?m={{ media_object.friendly_token }}</video:player_loc>
             <video:duration>{{ media_object.duration }}</video:duration>
             <video:publication_date>{{ media_object.add_date|date:"Y-m-d\TH:i:s+00:00" }}</video:publication_date>
             
@@ -100,7 +100,7 @@
             {% endwith %}
             
             {% if media_object.tags.all %}
-                <video:tag>{{ media_object.tags.all|join:", "|escape }}</video:tag>
+                <video:tag>{{ media_object.tags.all|slice:":5"|join:", "|escape }}</video:tag>
             {% endif %}
         </video:video>
         {% endif %}
