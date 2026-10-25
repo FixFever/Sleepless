@@ -43,3 +43,7 @@ templates/todo-MS4.md
 .secret_key.lock
 /.github
 **/__pycache__/
+# test coverage output
+.coverage
+.coverage.*
+htmlcov/
