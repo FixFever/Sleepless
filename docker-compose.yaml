@@ -27,6 +27,8 @@ services:
       POSTGRES_USER: '${POSTGRES_USER}'
       POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
       SECRET_KEY: '${SLEEPLESS_SECRET_KEY}'
+      EMAIL: '${EMAIL}'
+      EMAIL_PASSWORD: '${EMAIL_PASSWORD}'
     depends_on:
       - migrations
     restart: unless-stopped
@@ -63,6 +65,8 @@ services:
       POSTGRES_USER: '${POSTGRES_USER}'
       POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
       SECRET_KEY: '${SLEEPLESS_SECRET_KEY}'
+      EMAIL: '${EMAIL}'
+      EMAIL_PASSWORD: '${EMAIL_PASSWORD}'
     restart: unless-stopped
     labels:
       homepage.group: Containers
@@ -89,6 +93,8 @@ services:
       POSTGRES_USER: '${POSTGRES_USER}'
       POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
       SECRET_KEY: '${SLEEPLESS_SECRET_KEY}'
+      EMAIL: '${EMAIL}'
+      EMAIL_PASSWORD: '${EMAIL_PASSWORD}'
     depends_on:
       - migrations
     restart: unless-stopped
@@ -121,6 +127,8 @@ services:
       POSTGRES_USER: '${POSTGRES_USER}'
       POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
       SECRET_KEY: '${SLEEPLESS_SECRET_KEY}'
+      EMAIL: '${EMAIL}'
+      EMAIL_PASSWORD: '${EMAIL_PASSWORD}'
     command: "./deploy/docker/prestart.sh"
     restart: on-failure
  
