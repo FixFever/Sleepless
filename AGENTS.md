@@ -11,7 +11,9 @@ with local apps for RBAC, SAML/SSO, LTI, identity providers and a media migratio
 
 - Python dependencies: `requirements.txt`; dev/test extras: `requirements-dev.txt`.
 - Frontend: Node 20, package manifest in `frontend/package.json`.
-- Version lives in `package.json` and `cms/version.py`; releases are automated (see Commits).
+- `package.json` keeps the upstream SemVer version. `cms/version.py` supplies the runtime version used
+  in rendered pages and static-asset cache-busting URLs. This fork has no CI or automated release job;
+  local deployments use a four-part version such as `9.1.2.1` (upstream version + fork revision).
 
 ## Repository map
 
@@ -45,6 +47,15 @@ docker compose -f docker-compose-dev.yaml restart web   # after a hard Django cr
 
 Django auto-releases changed Python code. The React dev server hot-reloads but cannot handle POST
 requests and has partial CORS support, so verify writes against the main app on port 80.
+
+### This fork's deployment
+
+- The active installation uses the root `docker-compose.yaml` (`mediacms`, exposed on `:5454`), not
+  `docker-compose-dev.yaml`. The production compose file bind-mounts the repository and media directory;
+  do not assume the dev frontend container is running or use its targets for deployment.
+- Prefer `docker exec mediacms supervisorctl restart gunicorn` to reload Django after changing runtime
+  Python settings such as `cms/version.py`. A full container restart runs an entrypoint `find ... chown`
+  across the bind-mounted project, including `media_files`, and can take a long time.
 
 ## Tests
 
@@ -110,23 +121,35 @@ React is used as a library embedded in Django templates, not as a standalone SPA
   `frontend/.env`), and usually needs a Django template under `templates/` that loads its bundle.
 - Data comes from the API helpers in `frontend/src/static/js/utils/settings/`, configured through
   `frontend/src/templates/config/`.
-- Development flow: edit `frontend/src` → check on `:8088` → build and publish with
-  `make build-frontend` (`npm run dist`, copy `frontend/dist/static/*` into `static/`, restart `web`) →
-  commit the regenerated `static/` bundle together with the source.
+- Build flow: edit `frontend/src`, run `npm run dist` from `frontend/`, then copy **all** of
+  `frontend/dist/static/*` into `static/` and commit the generated output with the source. The
+  `make build-frontend` target uses `docker-compose-dev.yaml`; it is not suitable for this fork's
+  deployment unless that dev frontend service is intentionally configured and running. Copying only a
+  page bundle can leave it incompatible with `_commons.js`.
+- A local `npm install` creates `frontend/node_modules/` inside the bind-mounted tree. The container
+  entrypoint also scans that tree on a full restart; if dependencies were installed only to build, remove
+  build-only `node_modules/` and `dist/` after copying the output, or restart Gunicorn without restarting
+  the container.
 - Never hand-edit generated bundles in `static/`; change the source and rebuild.
 
 ## Commits and releases
 
 - Use Conventional Commits (`feat:`, `fix:`, `docs:`, `refactor:`, `perf:`, `test:`, `chore:`), with an
   optional scope: e.g. `fix: correct HLS label for portrait video`.
-- Releases are computed by semantic-release on `main` from commit messages. Do not hand-edit `CHANGELOG.md`,
-  `package.json` version or release notes.
+- The checked-in `.releaserc.json` is inherited upstream configuration; this fork has no CI/release job,
+  so commits do not automatically publish releases or update versions. Do not assume semantic-release runs.
+- Templates append `cms.version.VERSION` as `?v=...` to CSS/JS URLs. For each fork deployment, increment
+  the fourth component (for example, `9.1.2.1` → `9.1.2.2`) to invalidate browser caches; when rebasing onto
+  a newer upstream version, update the first three components and start the fork revision at `.1`.
+  `package.json` remains a three-part SemVer version and does not control these URLs. Do not hand-edit
+  `CHANGELOG.md` or release notes unless explicitly preparing a manual release.
 - Keep commits focused; avoid committing `media_files/` uploads, `local_settings.py`, `node_modules/`,
   `static_collected/` or `.env` files.
 
 ## Gotchas
 
-- `.github/` is gitignored in this fork, so there are no CI workflows or PR templates in the repo.
+- `.github/` is gitignored in this fork; there are no checked-in CI workflows or PR templates, and this
+  installation has no automated release pipeline.
 - `README.md` is intentionally minimal; real documentation lives in `docs/` (`dev_exp.md`,
   `developers_docs.md`, `media_permissions.md`, migration guides).
 - `templates/` and `static/` are committed products; a change to frontend code is incomplete until the
