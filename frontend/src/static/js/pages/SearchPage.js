@@ -1,8 +1,8 @@
 import React from 'react';
-import { ApiUrlContext } from '../utils/contexts/';
+import { apiUrlConfig } from '../utils/contexts/';
 import { PageStore, SearchFieldStore } from '../utils/stores/';
 import { getRequest } from '../utils/helpers/';
-import { FiltersToggleButton } from '../components/_shared/';
+import { FiltersToggleButton, MaterialIcon } from '../components/_shared/';
 import { MediaListWrapper } from '../components/MediaListWrapper';
 import { LazyLoadItemListAsync } from '../components/item-list/LazyLoadItemListAsync';
 import { SearchMediaFiltersRow } from '../components/search-filters/SearchMediaFiltersRow';
@@ -25,8 +25,16 @@ export class SearchPage extends Page {
       searchTags: SearchFieldStore.get('search-tags'),
       searchCategoryTitle: SearchFieldStore.get('search-categories'),
       categoryEditUrl: '',
-      hiddenFilters: true,
+      searchMediaType: SearchFieldStore.get('search-media-type'),
+      searchUploadDate: SearchFieldStore.get('search-upload-date'),
+      searchAuthor: SearchFieldStore.get('search-author'),
+      hiddenFilters: !(SearchFieldStore.get('search-media-type') || SearchFieldStore.get('search-upload-date')),
     };
+
+    this.state.filterArgs = this.buildFilterArgs({
+      media_type: this.state.searchMediaType || null,
+      upload_date: this.state.searchUploadDate || null,
+    });
 
     this.getCountFunc = this.getCountFunc.bind(this);
 
@@ -48,7 +56,7 @@ export class SearchPage extends Page {
 
     if (this.state.searchCategories) {
       getRequest(
-        ApiUrlContext._currentValue.archive.categories + '/' + encodeURIComponent(this.state.searchCategories),
+        apiUrlConfig.archive.categories + '/' + encodeURIComponent(this.state.searchCategories),
         !1,
         this.onCategoryLoad
       );
@@ -111,17 +119,9 @@ export class SearchPage extends Page {
         break;
     }
 
-    const newArgs = [];
-
-    for (let arg in args) {
-      if (null !== args[arg]) {
-        newArgs.push(arg + '=' + args[arg]);
-      }
-    }
-
     this.setState(
       {
-        filterArgs: newArgs.length ? '&' + newArgs.join('&') : '',
+        filterArgs: this.buildFilterArgs(args),
       },
       function () {
         this.updateRequestUrl();
@@ -170,7 +170,7 @@ export class SearchPage extends Page {
       (this.state.searchTags ? '&t=' + this.state.searchTags : '') +
       (this.state.searchCategories ? '&c=' + this.state.searchCategories : '');
 
-    const url = ApiUrlContext._currentValue.search.query + api_url_postfix + this.state.filterArgs;
+    const url = apiUrlConfig.search.query + api_url_postfix + this.state.filterArgs;
 
     if (this.didMount) {
       this.setState({
@@ -185,18 +185,23 @@ export class SearchPage extends Page {
     }
   }
 
-  onFilterArgsUpdate(updatedArgs) {
+  buildFilterArgs(args) {
+    const allArgs = { ...args, author: this.state.searchAuthor || null };
     const newArgs = [];
 
-    for (let arg in updatedArgs) {
-      if (null !== updatedArgs[arg]) {
-        newArgs.push(arg + '=' + updatedArgs[arg]);
+    for (let arg in allArgs) {
+      if (null !== allArgs[arg] && void 0 !== allArgs[arg]) {
+        newArgs.push(arg + '=' + encodeURIComponent(allArgs[arg]));
       }
     }
 
+    return newArgs.length ? '&' + newArgs.join('&') : '';
+  }
+
+  onFilterArgsUpdate(updatedArgs) {
     this.setState(
       {
-        filterArgs: newArgs.length ? '&' + newArgs.join('&') : '',
+        filterArgs: this.buildFilterArgs({ upload_date: this.state.searchUploadDate || null, ...updatedArgs }),
       },
       function () {
         this.updateRequestUrl();
@@ -222,15 +227,30 @@ export class SearchPage extends Page {
       <MediaListWrapper
         className="search-results-wrap items-list-hor"
         title={null === this.state.resultsTitle ? null : this.state.resultsTitle}
-        viewAllLink={this.state.categoryEditUrl || undefined}
-        viewAllText={this.state.categoryEditUrl ? translateString('EDIT CATEGORY') : undefined}
       >
-        {advancedFilters ? <FiltersToggleButton onClick={this.onToggleFiltersClick} /> : null}
+        {advancedFilters || this.state.categoryEditUrl ? (
+          <div className="mi-filters-actions">
+            {advancedFilters ? <FiltersToggleButton onClick={this.onToggleFiltersClick} /> : null}
+            {this.state.categoryEditUrl ? (
+              <a href={this.state.categoryEditUrl} className="mi-edit-link">
+                <MaterialIcon type="edit" />
+                <span>{translateString('EDIT')}</span>
+              </a>
+            ) : null}
+          </div>
+        ) : null}
         {advancedFilters ? (
-          <SearchResultsFilters hidden={this.state.hiddenFilters} onFiltersUpdate={this.onFiltersUpdate} />
+          <SearchResultsFilters
+            hidden={this.state.hiddenFilters}
+            mediaType={this.state.searchMediaType || 'all'}
+            uploadDate={this.state.searchUploadDate || 'all'}
+            onFiltersUpdate={this.onFiltersUpdate}
+          />
         ) : null}
 
-        {advancedFilters ? null : <SearchMediaFiltersRow onFiltersUpdate={this.onFilterArgsUpdate} />}
+        {advancedFilters ? null : (
+          <SearchMediaFiltersRow mediaType={this.state.searchMediaType || 'all'} onFiltersUpdate={this.onFilterArgsUpdate} />
+        )}
 
         {!this.state.validQuery ? null : (
           <LazyLoadItemListAsync

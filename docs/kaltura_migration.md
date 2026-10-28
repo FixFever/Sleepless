@@ -120,25 +120,32 @@ Every migration is different, so read these before starting rather than after.
 | Run unpaused during weekends | off | On the Migration scheduling tab. The window above is ignored on Saturday and Sunday, portal timezone. |
 | LTI platform for LMS courses | none | Links migrated LMS courses to a platform set up under **MediaCMS Admin → LTI 1.3 Integration → LTI Platforms**, so they stay in step with the LMS. Needs `USE_LTI`. See [Sites and learning platforms](#sites-and-learning-platforms). |
 | Add entries in sub-categories to parent categories | on | A KMS category shows the content of its sub-categories; MediaCMS categories are flat, so this adds it. See [Flat categories](#flat-categories). |
-| Migrate playlists | off | Static playlists become MediaCMS playlists, in order, fetching any media they name and creating its owners, whatever the user options say. Dynamic playlists are skipped. See [Playlists](#playlists). |
-| Migrate groups | off | Kaltura groups become MediaCMS RBAC groups, and their members are created whatever the user options say. Their media is not fetched: that follows the user options. Needs `USE_RBAC`. See [Groups](#groups). |
+| Migrate playlists | off | Static playlists holding media in the chosen top level categories, or in no category, become MediaCMS playlists, in order, fetching any such media they name and creating its owners, whatever the user options say. Dynamic playlists are skipped. See [Playlists](#playlists). |
+| Migrate groups | off | Kaltura groups that are members of a category in the chosen top level categories become MediaCMS RBAC groups, and their members are created whatever the user options say. Their media is not fetched: that follows the user options. Needs `USE_RBAC`. See [Groups](#groups). |
 | Import captions | on | Caption assets become WebVTT subtitles. One that fails to convert is recorded as failed and the media keeps the rest. Plain text transcripts have no equivalent and are only logged. |
 | Import statistics (Plays/Views) | on | Copy play counts onto the migrated media. |
 | Maintain publish state of media | on | Derive public, unlisted or private from the source. Unmoderated media stays private. See [Permissions](#permissions). |
 | Migrate media flavors / encodings | on | Import existing Kaltura flavors as MediaCMS encodings instead of re-encoding. Off imports the original file only and MediaCMS encodes it. |
-| Categories | **required** | On the Connection tab, loaded by Test connection. Fetch only the media in the chosen top level categories, and everything beneath them. At least one is required. |
+| Categories | **required** | On the Connection tab, loaded by Test connection. Fetch the media in the chosen top level categories and everything beneath them, plus media in no category. Media filed only under other top level categories is left out. At least one is required. |
 
 ### How users are matched
 
 Accounts are created lazily, as the media that belong to them arrive, and an existing account
 is reused rather than duplicated:
 
-1. **By email**, case insensitively. This is the normal link, and what lets a re-run attach
-   new media to accounts an earlier run created.
-2. **By username**, but only when the existing account has no email of its own. Otherwise it
+1. **By its own earlier record.** A Kaltura user an earlier run already migrated keeps that
+   account.
+2. **By email**, case insensitively, unless another Kaltura user already holds that account.
+   Kaltura lets several accounts share an email (a native account and the one an LMS
+   created, typically), and merging them would pool their media and drop the second one's
+   role. So the second one gets an account of its own, under its own username, with a
+   unique address on the reserved `email-conflict.invalid` domain, and the run log names
+   the conflict. Searching users for `email-conflict.invalid` after the run lists every
+   account whose email an administrator still has to decide.
+3. **By username**, but only when the existing account has no email of its own. Otherwise it
    is a different, already identified person who happens to collide on the sanitised username,
    and linking would hand them someone else's media.
-3. **Otherwise a new account**, with an unusable password, a numeric suffix if the username is
+4. **Otherwise a new account**, with an unusable password, a numeric suffix if the username is
    taken, and no notification email to anyone.
 
 The three user options are one question with three answers — sweep the whole directory, name
@@ -161,15 +168,19 @@ Every migration is scoped to what you choose. There is no "migrate everything" s
 because there is no sensible case for pointing a migration at an entire Kaltura account and
 hoping, and a migration nobody has scoped would sweep the lot by accident.
 
-**The categories you pick do not decide which media comes over.** That follows the owners,
-under [Import options](#import-options): every user's media by default, or only the listed
-users' media when you name them. Every entry has exactly one owner, so that is the axis that
-actually partitions a library, while a great many entries belong to no category at all and no
-category filter can reach them.
+**Each top level category is its own site**, a KMS or KAF instance with its own users, and one
+Kaltura partner often holds several. A media filed only under top level categories you did not
+pick belongs to another site, so it is **not migrated**, and neither is its owner unless
+**Migrate all users** is chosen, which still brings every account on the partner. A media that
+sits both in a tree you picked and in one you did not comes over, and loses only the filing
+outside your selection.
 
-What the picker decides is **which categories exist**, and which of them a media may be filed
-under. An entry that also sits in a tree you did not pick keeps its media and loses only that
-filing.
+**A media in no category at all is migrated**, whoever owns it: nothing on it says which site
+it came from. Within that, the user options decide as before: every user's media by default,
+or only the listed users' media when you name them.
+
+The picker also decides **which categories exist**, and which of them a media may be filed
+under.
 
 The picker lives on the **Connection** tab, because what you can choose depends on the
 connection working first. Press **Test connection**: when it succeeds it loads the list, and
@@ -217,10 +228,17 @@ frozen on whatever today happened to be. And KMS keeps a playlist per channel un
 internal account, which is plumbing nobody would recognise. On the portal this was built
 against, that leaves 4 of 10 playlists worth migrating.
 
+**Only playlists of the chosen sites come over.** Playlists belong to the partner, not to a
+site, so one is migrated when at least one entry it names sits under a chosen top level
+category or in no category at all. A playlist made of another site's media is left out, and so
+is its owner.
+
 **A playlist can name media the run never fetched**, because the user options narrowed it or
 because the playlist crosses into someone else's content. Those are fetched on the playlist's
 account and their owners created: asking for playlists is asking for whole playlists, and a
-list with holes in it is worse than an import that reached a little wider than asked.
+list with holes in it is worse than an import that reached a little wider than asked. The one
+exception is an entry filed only under top level categories you did not choose: it belongs to
+another site, so it is left out of the playlist and the log names it.
 
 Be aware of what that means. Switching playlists on fetches media owned by people outside
 **Only migrate below listed users**, and creates those people as users, or gives their media
@@ -248,7 +266,9 @@ so only people come through. Checked against a live portal, since Kaltura ignore
 field it does not support: 28 users unfiltered, 27 with `typeIn=0`, 1 with `typeIn=1`.
 
 Switch **Migrate groups** on and those groups become MediaCMS RBAC groups instead, keeping
-who is in them. Kaltura's group roles map straight across, MANAGER to manager and MEMBER to
+who is in them. Groups belong to the partner, not to a site, so only a group that is a member
+of a category under a chosen top level category comes over; one used only by another site, or
+by no category at all, is left out with its members. Kaltura's group roles map straight across, MANAGER to manager and MEMBER to
 member. It needs `USE_RBAC`; with RBAC off each group is recorded as skipped with the reason,
 rather than disappearing quietly.
 
@@ -290,14 +310,15 @@ as on the root it hangs from.
 | --- | --- | --- |
 | `privacyContexts` | set, e.g. `MediaSpace` | empty |
 | Category permissions | honoured, see [Permissions](#permissions) | none to honour |
-| Media state | from the category type | public |
+| Media state | from the category type | private, reached through the course |
 
 The consequence worth understanding: **the permission fields on an LMS category do nothing at
-the source.** Kaltura serves that content to anyone regardless of what `privacy` says, because
-there is no privacy context for it to enforce. So the migration reads those categories as
-public rather than importing a restriction that was never in force, which would hide media the
-source was showing and hand out RBAC groups gating something nobody gated. A payload with no
-`privacyContexts` field at all is read as KMS, the cautious direction.
+the source**, because there is no privacy context for Kaltura to enforce them in. What gates LMS
+content is the course itself: it is shown to the people enrolled in it. So the migration reads
+LMS categories as private and imports no permissions from them; an entry only in LMS courses
+arrives private, and the course's RBAC group (see below) is how its people reach it. MediaCMS
+shows such an entry as **Shared**. An entry that is also in a public KMS gallery stays public.
+A payload with no `privacyContexts` field at all is read as KMS.
 
 An LMS integration also does not put a course's media in the course channel. It creates a
 child named **InContext** and parks the media there, leaving the course itself empty. That
@@ -448,7 +469,7 @@ answered by `privacy` alone.
 | --- | --- | --- | --- |
 | No Restriction | No Restriction | plain | public |
 | No Restriction | Private | RBAC category with a group | public |
-| Requires Authentication | No Restriction | RBAC category with a group | unlisted |
+| Requires Authentication | No Restriction | RBAC category with a group | private, visible to the group |
 | Requires Authentication | Private | RBAC category with a group | private |
 | Private | either | RBAC category with a group | private, visible to the group |
 | Shared Repository | either | RBAC category with a group | private, visible to the group |
@@ -458,7 +479,13 @@ it never makes a category less visible than its privacy says: KMS's "Public, Res
 means anyone may watch while only members may contribute, and that arrives public.
 
 An entry in more than one category takes the most permissive of them, which is how Kaltura
-behaves too. An entry in no category at all is private. Two things override all of this:
+behaves too. An entry in no category at all is private. KMS marks an entry as Unlisted by
+placing it in its `<root>>unlisted` category, which is open to everyone, so that category
+is read by what it marks rather than by its privacy: it counts as an unlisted category. An
+entry in it arrives **unlisted**, unless it is also published to a public gallery or channel,
+in which case it is **public**, as it is to anyone browsing that gallery on Kaltura.
+`<root>>private` is read the same way but overrides everything: an entry in it is private. The
+`archive` and `playlists` categories do not count at all. Two things override all of this:
 `displayInSearch` set to none downgrades public to unlisted, and an entry that has not
 cleared moderation is private wherever it sits, because it was not published on the source
 either. An entry still awaiting approval inside a moderated category does not inherit that
@@ -466,12 +493,10 @@ category's state.
 
 Two things about this mapping are worth knowing before you run it.
 
-**Open becomes unlisted, which is a downgrade in one direction and not in the other.** Open
-in Kaltura means any logged in user may watch. MediaCMS has no such state: it has public,
-unlisted and private. Unlisted is the closest fit, and on a portal where
-`GLOBAL_LOGIN_REQUIRED` is off it is reachable by anyone holding the link. If that matters
-for your content, turn **Maintain publish state of media** off and set the states yourself, or set
-`GLOBAL_LOGIN_REQUIRED = True`.
+**Open becomes private and shared with the channel's group.** Open in Kaltura means any logged
+in user may watch. MediaCMS has no such state, so the entry arrives private in an RBAC
+category, and the people Kaltura named on the channel see it through its group. MediaCMS
+shows such an entry as **Shared**. Widening it to everyone is then the owner's decision.
 
 **Requires Authentication becomes a group holding the people Kaltura named**, the owner
 among them, rather than a plain category. MediaCMS has no "any logged in user may view"
@@ -486,7 +511,7 @@ then adds the members Kaltura reports:
 | Kaltura permission level | MediaCMS role |
 | --- | --- |
 | Manager | manager |
-| Moderator | contributor |
+| Moderator | manager |
 | Contributor | contributor |
 | Member | member |
 
@@ -582,29 +607,39 @@ Images have no flavors in Kaltura, so their file comes from the entry itself.
 
 ### Multi-stream recordings
 
-Kaltura Capture records the screen and the camera as **two entries** joined by
-`parentEntryId`. A listing never returns the child, so without asking for it by name the
-second stream is simply lost. Each entry is asked, one `baseEntry.list` call apiece.
+Kaltura Capture records the camera and each screen as **separate entries** joined by
+`parentEntryId`. A listing never returns the children, so without asking for them by name
+the other streams are simply lost. Each entry is asked, one `baseEntry.list` call apiece.
 
-When a child is found, the two are drawn as one video: the bigger picture is the base, the
-other is inset over its bottom right corner at a quarter of the width. MediaCMS plays one
-file per media, so one picture is what it has to be.
+When children are found, the streams are drawn side by side in one video on a 16:9 canvas,
+each scaled to fit its box:
 
-**Combining always re-encodes.** There is no stream copy that merges two pictures, so the
-work has to happen somewhere, and **Skip transcoding** decides where:
+| Streams | Layout |
+| --- | --- |
+| 2 | The child large on the left, the parent small on the right. |
+| 3 | The children stacked on the left, the parent small in the middle of the right. |
+
+MediaCMS plays one file per media, so one picture is what the recording becomes. Every
+stream is **also** imported as a media of its own, titled "<recording> (stream 1)",
+"(stream 2)" and so on, with the parent's camera as stream 1. They keep the recording's
+owner, state and date but none of its categories, so a gallery shows each recording once.
+
+**Combining always re-encodes.** There is no stream copy that merges pictures, so the work
+has to happen somewhere, and **Skip transcoding** decides where:
 
 | Skip transcoding | What happens | Ladder |
 | --- | --- | --- |
-| on | Every rung of the screen's ladder is drawn and attached as an encoding. MediaCMS transcodes nothing. | whatever Kaltura had |
+| on | Every rung of the biggest screen's ladder is drawn and attached as an encoding. MediaCMS transcodes nothing. | whatever Kaltura had |
 | off | Only the originals are drawn, and MediaCMS builds its own ladder from that. | the portal's full ladder |
 
-The camera is fetched **once** whatever the setting: it is drawn a quarter of the width, so
-one modest flavor serves every rung.
+Every other stream is fetched **once** whatever the setting: one flavor wide enough for its
+box serves every rung. If the streams cannot be drawn together, the entry arrives as its own
+stream alone and the children still arrive as media of their own.
 
-Two limits worth knowing. Only two streams are combined; a third is logged and left behind,
-because three pictures in one frame is not a recording anybody wants. And the audio is taken
-from one stream only, the base's where it has any: both carry the same microphone, so mixing
-them would play everything twice.
+Two limits worth knowing. Up to three streams are combined; a fourth is logged and left out
+of the picture, though it still arrives as a media of its own. And the audio is taken from
+one stream only, the parent's where it has any: every stream carries the same microphone, so
+mixing them would play everything twice.
 
 ### Quiet hours
 

@@ -25,6 +25,7 @@ from ..stop_words import STOP_WORDS
 from .encoding import EncodeProfile, Encoding
 from .subtitle import TranscriptionRequest
 from .utils import (
+    EDITOR_VIDEO_RESOLUTION,
     ENCODE_RESOLUTIONS_KEYS,
     MEDIA_ENCODING_STATUS,
     MEDIA_STATES,
@@ -111,7 +112,7 @@ class Media(models.Model):
     hls_file = models.CharField(max_length=1000, blank=True, help_text="Path to HLS file for videos")
 
     is_reviewed = models.BooleanField(
-        default=settings.MEDIA_IS_REVIEWED,
+        default=helpers.get_media_is_reviewed,
         db_index=True,
         help_text="Whether media is reviewed, so it can appear on public listings",
     )
@@ -189,7 +190,7 @@ class Media(models.Model):
     state = models.CharField(
         max_length=20,
         choices=MEDIA_STATES,
-        default=helpers.get_portal_workflow(),
+        default=helpers.get_portal_workflow,
         db_index=True,
         help_text="state of Media",
     )
@@ -400,7 +401,6 @@ class Media(models.Model):
             self.friendly_token,
             self.title,
             self.user.username,
-            self.user.email,
             self.user.name,
             self.description,
             a_tags,
@@ -637,6 +637,11 @@ class Media(models.Model):
 
         return True
 
+    def load_stored_listing_fields(self):
+        stored = Media.objects.filter(pk=self.pk).values("state", "is_reviewed").first() or {}
+        for field, value in stored.items():
+            setattr(self, field, value)
+
     def post_encode_actions(self, encoding=None, action=None):
         """perform things after encode has run
         whether it has failed or succeeded
@@ -652,6 +657,8 @@ class Media(models.Model):
                 else:
                     self.preview_file_path = encoding.media_file.path
 
+        # this copy was loaded when encoding started; use the current state so a media made private meanwhile is not relisted
+        self.load_stored_listing_fields()
         self.save(update_fields=["encoding_status", "listable", "preview_file_path"])
 
         if encoding and encoding.status == "success" and encoding.profile.codec == "h264" and action == "add" and not encoding.chunk:
@@ -691,7 +698,8 @@ class Media(models.Model):
         if self.media_type not in ["video", "audio"]:
             return None
 
-        ret = self.encodings.filter(status="success", profile__extension='mp4', chunk=False).exclude(profile__name=PREVIEW_PROFILE_NAME).order_by("-profile__resolution").first()
+        encodings = self.encodings.filter(status="success", profile__extension='mp4', chunk=False).exclude(profile__name=PREVIEW_PROFILE_NAME)
+        ret = encodings.filter(profile__resolution__lte=EDITOR_VIDEO_RESOLUTION).order_by("-profile__resolution").first() or encodings.order_by("profile__resolution").first()
         if ret:
             return helpers.url_from_path(ret.media_file.path)
 

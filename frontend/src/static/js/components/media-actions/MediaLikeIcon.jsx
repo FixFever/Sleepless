@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { TextsContext } from '../../utils/contexts/';
+import { textsConfig } from '../../utils/contexts/';
 import { MediaPageStore } from '../../utils/stores/';
-import { formatViewsNumber } from '../../utils/helpers/';
+import { formatViewsNumber, translateString } from '../../utils/helpers/';
 import { PageActions, MediaPageActions } from '../../utils/actions/';
 import { CircleIconButton, MaterialIcon } from '../_shared/';
 
@@ -16,12 +16,12 @@ export function MediaLikeIcon() {
 
   function onCompleteMediaLike() {
     updateStateValues();
-    PageActions.addNotification(TextsContext._currentValue.notifications.addToLiked, 'likedMedia');
+    PageActions.addNotification(textsConfig.notifications.addToLiked, 'likedMedia');
   }
 
   function onCompleteMediaLikeCancel() {
     updateStateValues();
-    PageActions.addNotification(TextsContext._currentValue.notifications.removeFromLiked, 'unlikedMedia');
+    PageActions.addNotification(textsConfig.notifications.removeFromLiked, 'unlikedMedia');
   }
 
   function onFailMediaLikeRequest() {
@@ -48,7 +48,7 @@ export function MediaLikeIcon() {
   }, []);
 
   return (
-    <div className="like">
+    <div className="like" data-action-tooltip={translateString('Like')}>
       <button onClick={toggleLike}>
         <CircleIconButton type="span">
           <MaterialIcon type="thumb_up" />

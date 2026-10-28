@@ -40,6 +40,76 @@ def static_playlist(playlist_id, user_id="jdoe", content="1_a,1_b"):
     return {"id": playlist_id, "playlistType": PLAYLIST_TYPE_STATIC, "userId": user_id, "playlistContent": content}
 
 
+SELECTION_ROOTS = [
+    {"id": "10", "fullName": "MediaSpace"},
+    {"id": "20", "fullName": "moodle_jPsFc"},
+    {"id": "30", "fullName": "ltigeneric_8yrU6"},
+]
+FILED = {"1_a": {"10"}, "1_b": {"10"}, "1_kaf": {"30"}, "1_both": {"10", "30"}, "1_loose": set()}
+
+
+def selection_provider(selected, memberships=None):
+    memberships = memberships or {}
+
+    def answer(service, action, filter, pager):
+        if service == "categoryUser":
+            return {"objects": memberships.get(filter["userIdEqual"], [])}
+        wanted = [entry_id for entry_id in filter["idIn"].split(",") if entry_id in FILED]
+        if "categoryAncestorIdIn" in filter:
+            roots = set(filter["categoryAncestorIdIn"].split(","))
+            wanted = [entry_id for entry_id in wanted if FILED[entry_id] & roots]
+        return {"objects": [{"id": entry_id} for entry_id in wanted]}
+
+    provider = make_provider(answer, source_category_ids=selected)
+    provider._all_categories = mock.Mock(return_value=SELECTION_ROOTS)
+    return provider
+
+
+class TestPlaylistAndGroupSelection(SimpleTestCase):
+    def test_a_playlist_with_anything_in_the_selection_comes_over(self):
+        provider = selection_provider("10")
+        self.assertTrue(provider.playlist_in_selection(static_playlist("p", content="1_kaf,1_a")))
+        self.assertTrue(provider.playlist_in_selection(static_playlist("p", content="1_both")))
+        self.assertTrue(provider.playlist_in_selection(static_playlist("p", content="1_loose")))
+
+    def test_a_playlist_of_another_instance_is_left_out(self):
+        provider = selection_provider("10")
+        self.assertFalse(provider.playlist_in_selection(static_playlist("p", content="1_kaf")))
+        self.assertFalse(provider.playlist_in_selection(static_playlist("p", content="1_kaf,1_gone")))
+        self.assertFalse(provider.playlist_in_selection(static_playlist("p", content="1_gone")))
+
+    def test_the_playlists_phase_keeps_only_playlists_in_the_selection(self):
+        provider = selection_provider("10")
+        provider._client.list_page_by_index.side_effect = [
+            ([static_playlist("kaf", content="1_kaf")], {"page": 2}),
+            ([static_playlist("mine", content="1_kaf,1_a"), static_playlist("theirs", content="1_kaf")], {"page": 3}),
+        ]
+        self.assertEqual(provider.list_page("playlists", {"page": 1}, 2), (["mine"], {"page": 3}))
+
+    def test_a_long_playlist_is_looked_up_in_chunks(self):
+        provider = selection_provider("10")
+        content = ",".join([f"1_x{index}" for index in range(700)] + ["1_a"])
+        self.assertTrue(provider.playlist_in_selection(static_playlist("p", content=content)))
+        sizes = [len(call.kwargs["filter"]["idIn"].split(",")) for call in provider._client.call.call_args_list if "categoryAncestorIdIn" not in call.kwargs["filter"]]
+        self.assertEqual(sizes, [500, 201])
+
+    def test_a_group_comes_over_only_as_a_member_of_a_chosen_category(self):
+        memberships = {
+            "Staff": [{"status": 1, "categoryFullIds": "30>31"}, {"status": 1, "categoryFullIds": "10>12>13"}],
+            "KafOnly": [{"status": 1, "categoryFullIds": "30>31"}],
+            "Pending": [{"status": 2, "categoryFullIds": "10>12"}],
+            "Nowhere": [],
+        }
+        provider = selection_provider("10", memberships)
+        verdicts = {group: provider.group_in_selection(group) for group in memberships}
+        self.assertEqual(verdicts, {"Staff": True, "KafOnly": False, "Pending": False, "Nowhere": False})
+
+    def test_the_groups_phase_leaves_out_groups_of_other_instances(self):
+        provider = selection_provider("10", {"Staff": [{"status": 1, "categoryFullIds": "10"}], "KafOnly": [{"status": 1, "categoryFullIds": "30"}]})
+        provider._client.list_page_by_index.return_value = ([{"id": "KafOnly"}, {"id": "Staff"}], {"page": 2})
+        self.assertEqual(provider.list_page("groups", {}, 50), (["Staff"], {"page": 2}))
+
+
 class TestPlaylists(SimpleTestCase):
     def test_only_a_static_playlist_of_a_person_with_entries_is_migratable(self):
         provider = make_provider()
@@ -57,7 +127,7 @@ class TestPlaylists(SimpleTestCase):
         self.assertEqual(provider._client.call.call_count, 2)
 
     def test_the_playlist_phase_drops_what_cannot_be_migrated(self):
-        provider = make_provider()
+        provider = selection_provider("10")
         provider._client.list_page_by_index.return_value = ([static_playlist("p1"), static_playlist("dyn", content="<x/>"), {"playlistType": 3}], {"page": 2})
         self.assertEqual(provider.list_page("playlists", {}, 50), (["p1"], {"page": 2}))
 
@@ -89,8 +159,23 @@ class TestPeopleAndGroups(SimpleTestCase):
         self.assertEqual(provider.list_page("users", {}, 50), (["jdoe"], {"page": 2}))
         self.assertEqual(provider._client.list_page_by_index.call_args.args[3], {"typeIn": str(USER_TYPE_USER)})
 
-    def test_the_groups_phase(self):
+    def test_a_page_of_only_system_accounts_is_not_the_end_of_the_users_phase(self):
         provider = make_provider()
+        provider._client.list_page_by_index.side_effect = [([{"id": "__ADMIN__"}, {"id": "kmssaasadmin1"}], {"page": 2}), ([{"id": "jdoe"}], {"page": 3})]
+        self.assertEqual(provider.list_page("users", {"page": 1}, 2), (["jdoe"], {"page": 3}))
+
+    def test_a_page_of_only_dynamic_playlists_is_not_the_end_of_the_playlists_phase(self):
+        provider = selection_provider("10")
+        provider._client.list_page_by_index.side_effect = [([static_playlist("dyn", content="<x/>")], {"page": 2}), ([static_playlist("p1")], {"page": 3})]
+        self.assertEqual(provider.list_page("playlists", {"page": 1}, 1), (["p1"], {"page": 3}))
+
+    def test_running_out_of_users_ends_the_phase_where_it_stood(self):
+        provider = make_provider()
+        provider._client.list_page_by_index.side_effect = [([{"id": "__ADMIN__"}], {"page": 2}), ([], {"page": 2})]
+        self.assertEqual(provider.list_page("users", {"page": 1}, 1), ([], {"page": 2}))
+
+    def test_the_groups_phase(self):
+        provider = selection_provider("10", memberships={"Staff": [{"status": 1, "categoryFullIds": "10>11"}]})
         provider._client.list_page_by_index.return_value = ([{"id": "Staff"}, {}], {"page": 2})
         self.assertEqual(provider.list_page("groups", {}, 50), (["Staff"], {"page": 2}))
         self.assertEqual(provider._client.list_page_by_index.call_args.args[3], {"typeIn": str(USER_TYPE_GROUP)})
@@ -217,6 +302,58 @@ class TestCategorySweep(SimpleTestCase):
         provider._client.list_entries_page.return_value = ([], {})
         provider.list_page("media", {}, 10)
         self.assertEqual(provider._client.list_entries_page.call_args.args[2]["categoriesFullNameIn"], "MediaSpace>site>galleries")
+
+
+class TestMediaSweepSelection(SimpleTestCase):
+    ROOTS = [
+        {"id": "10", "fullName": "MediaSpace"},
+        {"id": "20", "fullName": "moodle_jPsFc"},
+        {"id": "30", "fullName": "ltigeneric_8yrU6"},
+        {"id": "31", "fullName": "ltigeneric_8yrU6>site"},
+    ]
+    FILED = {"0_kms": {"10"}, "0_moodle": {"20"}, "0_kaf": {"30"}, "0_both": {"10", "30"}, "0_loose": set()}
+
+    def provider(self, selected):
+        def answer(service, action, filter, pager):
+            wanted = set(filter["idIn"].split(","))
+            roots = set(filter["categoryAncestorIdIn"].split(","))
+            return {"objects": [{"id": entry_id} for entry_id in sorted(wanted) if self.FILED[entry_id] & roots]}
+
+        provider = make_provider(answer, source_category_ids=selected)
+        provider._all_categories = mock.Mock(return_value=self.ROOTS)
+        return provider
+
+    def test_media_filed_only_under_roots_nobody_chose_is_left_out(self):
+        provider = self.provider("10,20")
+        provider._client.list_entries_page.return_value = ([{"id": entry_id} for entry_id in self.FILED], {"created_at": 5})
+        self.assertEqual(provider.list_page("media", {}, 10), (["0_kms", "0_moodle", "0_both", "0_loose"], {"created_at": 5}))
+
+    def test_choosing_the_root_brings_its_media(self):
+        provider = self.provider("30")
+        provider._client.list_entries_page.return_value = ([{"id": entry_id} for entry_id in self.FILED], {"created_at": 5})
+        self.assertEqual(provider.list_page("media", {}, 10)[0], ["0_kaf", "0_both", "0_loose"])
+
+    def test_a_page_the_selection_empties_is_not_the_end_of_the_media_phase(self):
+        provider = self.provider("10")
+        provider._client.list_entries_page.side_effect = [([{"id": "0_kaf"}, {"id": "0_moodle"}], {"created_at": 1}), ([{"id": "0_kms"}], {"created_at": 2})]
+        self.assertEqual(provider.list_page("media", {}, 2), (["0_kms"], {"created_at": 2}))
+
+    def test_running_out_of_media_ends_the_phase_where_it_stood(self):
+        provider = self.provider("10")
+        provider._client.list_entries_page.side_effect = [([{"id": "0_kaf"}], {"created_at": 1}), ([], {"created_at": 1})]
+        self.assertEqual(provider.list_page("media", {}, 2), ([], {"created_at": 1}))
+
+    def test_the_unchosen_roots_are_read_once(self):
+        provider = self.provider("10")
+        provider._client.list_entries_page.return_value = ([{"id": "0_kms"}], {"created_at": 1})
+        provider.list_page("media", {}, 2)
+        provider.list_page("media", {}, 2)
+        provider._all_categories.assert_called_once()
+
+    def test_the_total_leaves_out_media_under_unchosen_roots(self):
+        provider = self.provider("10")
+        provider._client.count.side_effect = lambda service, kfilter=None: 3 if (kfilter or {}).get("categoryAncestorIdIn") == "20,30" else 10
+        self.assertEqual(provider._entries_in_selection(), 7)
 
 
 class TestChildEntriesAndCourses(SimpleTestCase):

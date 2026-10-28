@@ -44,7 +44,7 @@ CATEGORY_PRIVATE = "private"
 
 CATEGORY_PERMISSION_ROLES = {
     0: "manager",
-    1: "contributor",
+    1: "manager",
     2: "contributor",
     3: "member",
 }
@@ -552,9 +552,9 @@ def category_type(category):
     unrecognised privacy value is read as the most restrictive: guessing generously leaks.
     """
     if category_tree_kind(category) == LMS_TREE:
-        # outside a privacy context these fields are inert; reading them would gate what
-        # nobody was gating
-        return CATEGORY_PUBLIC
+        # its privacy fields are inert outside a privacy context; the course itself is
+        # what gates it, so it is private and reached through the course's group
+        return CATEGORY_PRIVATE
 
     privacy = category.get("privacy")
     appear_in_list = category.get("appearInList")
@@ -594,7 +594,7 @@ def needs_rbac_group(category):
 
 CATEGORY_TYPE_STATE = {
     CATEGORY_PUBLIC: "public",
-    CATEGORY_OPEN: "unlisted",
+    CATEGORY_OPEN: "private",
     CATEGORY_RESTRICTED: "private",
     CATEGORY_PRIVATE: "private",
 }
@@ -602,23 +602,43 @@ CATEGORY_TYPE_STATE = {
 STATE_PRECEDENCE = ("public", "unlisted", "private")
 
 
+def kms_housekeeping_name(full_name):
+    parts = [part.strip().lower() for part in str(full_name or "").split(">") if part.strip()]
+    if len(parts) > 1 and parts[1] in KMS_HOUSEKEEPING:
+        return parts[1]
+    return ""
+
+
 def media_state(categories, display_in_search=None, moderation_status=None):
     """MediaCMS state for a Kaltura entry.
 
     Kaltura entries carry no state of their own, so it comes from their categories and the
-    most permissive one wins; in no category at all means private. Being held out of search
-    only ever downgrades, and an entry that has not cleared moderation is private wherever
-    it sits. A bare privacy integer is still accepted alongside category dicts.
+    most permissive one wins; in no category at all means private. KMS's private
+    housekeeping category overrides all others, while its unlisted one counts as an
+    unlisted category, so an entry also published to a public gallery stays public. Being
+    held out of search only
+    ever downgrades, and an entry that has not cleared moderation is private wherever it
+    sits. A bare privacy integer is still accepted alongside category dicts.
     """
     if moderation_status is not None and moderation_status not in MODERATION_PUBLISHED:
         return "private"
 
     states = []
+    marks = set()
     for category in categories or []:
         if isinstance(category, dict):
+            housekeeping = kms_housekeeping_name(category.get("fullName"))
+            if housekeeping:
+                marks.add(housekeeping)
+                continue
             states.append(CATEGORY_TYPE_STATE[category_type(category)])
         elif category is not None:
             states.append(CATEGORY_TYPE_STATE[category_type({"privacy": category})])
+
+    if "private" in marks:
+        return "private"
+    if "unlisted" in marks:
+        states.append("unlisted")
 
     state = "private"
     for candidate in STATE_PRECEDENCE:
@@ -676,10 +696,7 @@ def is_importable_category(full_name):
         return True
     if ">site" in name:
         return False
-    parts = [part.strip().lower() for part in name.split(">") if part.strip()]
-    if len(parts) > 1 and parts[1] in KMS_HOUSEKEEPING:
-        return False
-    return True
+    return not kms_housekeeping_name(name)
 
 
 def course_name_from_metadata(xmls):
@@ -872,6 +889,7 @@ class KalturaProvider(BaseProvider):
         super().__init__(connection, options)
         self._client = None
         self._selected_paths = None
+        self._unselected_roots = None
         self._category_paths = None
         self._group_ids = None
 
@@ -916,12 +934,21 @@ class KalturaProvider(BaseProvider):
         categories = [category for category in self._all_categories() if self.worth_importing(category)]
 
         return {
+            "entries": self._entries_in_selection(),
             "users": len(self.restricted_user_ids()) or len(people),
-            "groups": self.client.count("user", {"typeIn": str(USER_TYPE_GROUP)}) if self.options.get("migrate_groups") else 0,
-            "playlists": len(self._migratable_playlists()) if self.options.get("migrate_playlists") else 0,
+            "groups": len([group_id for group_id in self.group_ids() if self.group_in_selection(group_id)]) if self.options.get("migrate_groups") else 0,
+            "playlists": len([playlist for playlist in self._migratable_playlists() if self.playlist_in_selection(playlist)]) if self.options.get("migrate_playlists") else 0,
             "categories": len([c for c in categories if ">site>channels>" not in (c.get("fullName") or "")]),
             "channels": len([c for c in categories if ">site>channels>" in (c.get("fullName") or "")]),
         }
+
+    def _entries_in_selection(self):
+        kfilter = self._entry_filter()
+        total = self.client.count("media", kfilter)
+        unselected = self._unselected_root_ids()
+        if unselected:
+            total -= self.client.count("media", dict(kfilter, categoryAncestorIdIn=",".join(unselected)))
+        return total
 
     def _migratable_playlists(self):
         """The playlists a run would bring. Counted from the objects, not from totalCount,
@@ -991,21 +1018,26 @@ class KalturaProvider(BaseProvider):
 
     def list_page(self, phase, cursor, page_size):
         if phase == "media":
-            entries, next_cursor = self.client.list_entries_page(cursor, page_size, self._entry_filter())
-            return [str(entry["id"]) for entry in entries], next_cursor
+            while True:
+                entries, next_cursor = self.client.list_entries_page(cursor, page_size, self._entry_filter())
+                if not entries:
+                    return [], next_cursor
+                entry_ids = [str(entry["id"]) for entry in entries]
+                outside = self.outside_selection(entry_ids)
+                kept = [entry_id for entry_id in entry_ids if entry_id not in outside]
+                if kept:
+                    return kept, next_cursor
+                cursor = next_cursor
 
         if phase == "users":
             # Kaltura ignores a filter field it does not support, so this was verified live
-            users, next_cursor = self.client.list_page_by_index("user", cursor, page_size, {"typeIn": str(USER_TYPE_USER)})
-            return [str(user["id"]) for user in users if user.get("id") and not is_system_user(user.get("id"))], next_cursor
+            return self._list_kept("user", cursor, page_size, {"typeIn": str(USER_TYPE_USER)}, lambda user: not is_system_user(user.get("id")))
 
         if phase == "playlists":
-            playlists, next_cursor = self.client.list_page_by_index("playlist", cursor, page_size)
-            return [str(p["id"]) for p in playlists if p.get("id") and self.playlist_is_migratable(p)], next_cursor
+            return self._list_kept("playlist", cursor, page_size, None, lambda playlist: self.playlist_is_migratable(playlist) and self.playlist_in_selection(playlist))
 
         if phase == "groups":
-            groups, next_cursor = self.client.list_page_by_index("user", cursor, page_size, {"typeIn": str(USER_TYPE_GROUP)})
-            return [str(group["id"]) for group in groups if group.get("id")], next_cursor
+            return self._list_kept("user", cursor, page_size, {"typeIn": str(USER_TYPE_GROUP)}, lambda group: self.group_in_selection(group["id"]))
 
         if phase == "categories":
             return self._list_importable_categories(cursor, page_size)
@@ -1026,6 +1058,53 @@ class KalturaProvider(BaseProvider):
                 result = self.client.call("category", "list", filter={"idIn": ",".join(wanted)})
                 self._selected_paths = [category.get("fullName") or "" for category in (result.get("objects") or [])]
         return self._selected_paths
+
+    def _unselected_root_ids(self):
+        if self._unselected_roots is None:
+            chosen = set(self.restricted_category_ids())
+            self._unselected_roots = [
+                str(category["id"]) for category in self._all_categories() if category.get("id") and is_selectable_category(category.get("fullName") or "") and str(category["id"]) not in chosen
+            ]
+        return self._unselected_roots
+
+    def _matching_entries(self, entry_ids, kfilter=None):
+        found = set()
+        for start in range(0, len(entry_ids), 500):
+            chunk = entry_ids[start : start + 500]
+            result = self.client.call("media", "list", filter=dict(kfilter or {}, idIn=",".join(chunk)), pager={"pageSize": len(chunk), "pageIndex": 1})
+            objects = (result.get("objects") or []) if isinstance(result, dict) else []
+            found.update(str(entry.get("id")) for entry in objects if entry.get("id"))
+        return found
+
+    def _entries_under(self, entry_ids, category_ids):
+        if not entry_ids or not category_ids:
+            return set()
+        return self._matching_entries(entry_ids, {"categoryAncestorIdIn": ",".join(category_ids)})
+
+    def outside_selection(self, entry_ids):
+        elsewhere = self._entries_under(entry_ids, self._unselected_root_ids())
+        return elsewhere - self._entries_under(sorted(elsewhere), self.restricted_category_ids())
+
+    def playlist_in_selection(self, playlist):
+        entry_ids = parse_playlist_content(playlist.get("playlistContent"))
+        existing = self._matching_entries(entry_ids)
+        return bool(existing - self.outside_selection(sorted(existing)))
+
+    def group_in_selection(self, group_id):
+        chosen = set(self.restricted_category_ids())
+        page_index = 1
+        while True:
+            result = self.client.call("categoryUser", "list", filter={"userIdEqual": str(group_id)}, pager={"pageSize": 500, "pageIndex": page_index})
+            objects = (result.get("objects") or []) if isinstance(result, dict) else []
+            for membership in objects:
+                if membership.get("status") != CATEGORY_USER_ACTIVE:
+                    continue
+                path = str(membership.get("categoryFullIds") or membership.get("categoryId") or "")
+                if chosen & set(path.split(">")):
+                    return True
+            if len(objects) < 500:
+                return False
+            page_index += 1
 
     def within_selection(self, full_name):
         """Whether a path is one of the chosen roots or sits beneath one"""
@@ -1054,6 +1133,16 @@ class KalturaProvider(BaseProvider):
         if ">" not in full_name and is_instance_root(full_name, self._all_category_paths()):
             return False
         return is_importable_category(full_name) and self._within_selection(full_name)
+
+    def _list_kept(self, service, cursor, page_size, kfilter, keep):
+        while True:
+            objects, next_cursor = self.client.list_page_by_index(service, cursor, page_size, kfilter)
+            if not objects:
+                return [], cursor
+            kept = [str(item["id"]) for item in objects if item.get("id") and keep(item)]
+            if kept:
+                return kept, next_cursor
+            cursor = next_cursor
 
     def _list_importable_categories(self, cursor, page_size):
         """One page of categories worth importing.

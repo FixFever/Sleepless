@@ -530,7 +530,7 @@ def edit_chapters(request):
         {
             "media_object": media,
             "add_subtitle_url": media.add_subtitle_url,
-            "media_file_path": helpers.url_from_path(media.media_file.path),
+            "media_file_path": media.trim_video_url or helpers.url_from_path(media.media_file.path),
             "media_id": media.friendly_token,
             "chapters": chapters_json,
         },
@@ -624,13 +624,14 @@ def embed_media(request):
     if not friendly_token:
         return HttpResponseRedirect("/")
 
-    media = Media.objects.values("title").filter(friendly_token=friendly_token).first()
+    media = Media.objects.values("media_type").filter(friendly_token=friendly_token).first()
 
     if not media:
         return HttpResponse('This media no longer exists', status=404, content_type='text/plain; charset=utf-8')
 
     context = {}
     context["media"] = friendly_token
+    context["media_type"] = media["media_type"]
     return render(request, "cms/embed.html", context)
 
 
