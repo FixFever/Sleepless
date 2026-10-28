@@ -10,11 +10,6 @@ module.exports = {
         icon: 'contact_support',
       },
       {
-        text: 'Terms',
-        link: './terms.html',
-        icon: 'description',
-      },
-      {
         text: 'Contact',
         link: './contact.html',
         icon: 'alternate_email',

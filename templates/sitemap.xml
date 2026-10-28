@@ -53,11 +53,6 @@
         <priority>0.3</priority>
     </url>
     <url>
-        <loc>{{ FRONTEND_HOST }}/tos</loc>
-        <changefreq>monthly</changefreq>
-        <priority>0.3</priority>
-    </url>
-    <url>
         <loc>{{ FRONTEND_HOST }}/contact</loc>
         <changefreq>never</changefreq>
         <priority>0.3</priority>

@@ -48,12 +48,16 @@ class StaticPagesTest(TestCase):
         self.assertNotIn("page", response.context)
 
     def test_simple_pages_render(self):
-        pages = {"/tos": "cms/tos.html", "/setlanguage": "cms/set_language.html", "/contact": "cms/contact.html"}
+        pages = {"/setlanguage": "cms/set_language.html", "/contact": "cms/contact.html"}
         for url, template in pages.items():
             with self.subTest(url=url):
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, 200)
                 self.assertTemplateUsed(response, template)
+
+    def test_terms_of_service_page_is_removed(self):
+        response = self.client.get("/tos")
+        self.assertEqual(response.status_code, 404)
 
     def test_setlanguage_page_posts_to_the_django_language_switcher(self):
         self.assertContains(self.client.get("/setlanguage"), 'action="/i18n/setlang/"')
@@ -90,8 +94,9 @@ class SitemapTest(TestCase):
         response = views.sitemap(factory_request("/sitemap.xml"))
         self.assertEqual(response["Content-Type"], "application/xml")
         content = response.content.decode()
-        for path in ["/featured", "/latest", "/members", "/tags", "/categories", "/about", "/tos", "/contact"]:
+        for path in ["/featured", "/latest", "/members", "/tags", "/categories", "/about", "/contact"]:
             self.assertIn(f"<loc>http://testserver{path}</loc>", content)
+        self.assertNotIn("/tos", content)
 
     def test_sitemap_lists_only_listable_media(self):
         content = self.sitemap()
