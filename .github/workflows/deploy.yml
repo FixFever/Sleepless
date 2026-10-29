@@ -24,7 +24,6 @@ jobs:
           username: ${{ secrets.REMOTE_USER }}
           password: ${{ secrets.REMOTE_PASSWORD }}
           port: ${{ secrets.REMOTE_PORT }}
-          script_stop: true
           script: |
             $ErrorActionPreference = 'Stop'
             Set-Location 'C:\apps\sleepless'
