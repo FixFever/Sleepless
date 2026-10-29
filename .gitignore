@@ -41,7 +41,10 @@ celerybeat-schedule-wal
 templates/todo-MS4.md
 .secret_key
 .secret_key.lock
-/.github
+/.github/*
+!/.github/workflows/
+/.github/workflows/*
+!/.github/workflows/deploy.yml
 **/__pycache__/
 # test coverage output
 .coverage

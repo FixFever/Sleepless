@@ -1,0 +1,37 @@
+name: Sleepless CI/CD
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sleepless-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to Windows host
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update source and start containers
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          port: ${{ secrets.DEPLOY_PORT }}
+          fingerprint: ${{ secrets.DEPLOY_SSH_FINGERPRINT }}
+          script_stop: true
+          script: |
+            $ErrorActionPreference = 'Stop'
+            Set-Location 'C:\apps\sleepless'
+
+            git pull --ff-only origin main
+            if ($LASTEXITCODE -ne 0) { throw 'git pull failed' }
+
+            docker compose up -d --build
+            if ($LASTEXITCODE -ne 0) { throw 'docker compose up failed' }
