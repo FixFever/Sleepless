@@ -47,6 +47,7 @@
 **/celerybeat-schedule*
 **/.env
 **/.env.*
+cms/local_settings.py
 
 # Media files and data directories (should not be in image)
 media_files/**

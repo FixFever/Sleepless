@@ -5,17 +5,15 @@
 services:
 
   mediacms:
-    build: 
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/fixfever/sleepless:${SLEEPLESS_IMAGE_TAG:-main}
     container_name: mediacms
     ports:
       - 5454:80
     networks:
       - server_default
     volumes:
-      - ./:/home/mediacms.io/mediacms/
       - M:\\mediacms:/home/mediacms.io/mediacms/media_files
+      - mediacms_logs:/home/mediacms.io/mediacms/logs
     environment:
       ENABLE_CELERY_BEAT: 'no'
       ENABLE_CELERY_SHORT: 'no'
@@ -45,9 +43,7 @@ services:
       homepage.description: Collection of animation films
       
   celery-beat:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/fixfever/sleepless:${SLEEPLESS_IMAGE_TAG:-main}
     container_name: celery-beat
     networks:
       - server_default
@@ -74,9 +70,7 @@ services:
       homepage.icon: /icons/sleepless.png
       
   celery:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/fixfever/sleepless:${SLEEPLESS_IMAGE_TAG:-main}
     container_name: celery
     networks:
       - server_default
@@ -104,14 +98,12 @@ services:
       homepage.icon: /icons/sleepless.png
 
   migrations:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/fixfever/sleepless:${SLEEPLESS_IMAGE_TAG:-main}
     container_name: migrations    
     networks:
       - server_default
     volumes:
-      - ./:/home/mediacms.io/mediacms/
+      - mediacms_logs:/home/mediacms.io/mediacms/logs
     environment:
       ENABLE_UWSGI: 'no'
       ENABLE_NGINX: 'no'
@@ -136,3 +128,7 @@ networks:
   server_default:
     external: true
     name: server_default
+
+volumes:
+  mediacms_logs:
+    external: true
