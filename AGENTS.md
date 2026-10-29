@@ -12,8 +12,9 @@ with local apps for RBAC, SAML/SSO, LTI, identity providers and a media migratio
 - Python dependencies: `requirements.txt`; dev/test extras: `requirements-dev.txt`.
 - Frontend: Node 20, package manifest in `frontend/package.json`.
 - `package.json` keeps the upstream SemVer version. `cms/version.py` supplies the runtime version used
-  in rendered pages and static-asset cache-busting URLs. This fork has no CI or automated release job;
-  local deployments use a four-part version such as `9.1.2.1` (upstream version + fork revision).
+  in rendered pages and static-asset cache-busting URLs. This fork has no automated release/versioning
+  job; GitHub Actions builds and deploys the production image from `main`. Local deployments use a
+  four-part version such as `9.1.2.1` (upstream version + fork revision).
 
 ## Repository map
 
@@ -51,11 +52,24 @@ requests and has partial CORS support, so verify writes against the main app on 
 ### This fork's deployment
 
 - The active installation uses the root `docker-compose.yaml` (`mediacms`, exposed on `:5454`), not
-  `docker-compose-dev.yaml`. The production compose file bind-mounts the repository and media directory;
-  do not assume the dev frontend container is running or use its targets for deployment.
-- Prefer `docker exec mediacms supervisorctl restart gunicorn` to reload Django after changing runtime
-  Python settings such as `cms/version.py`. A full container restart runs an entrypoint `find ... chown`
-  across the bind-mounted project, including `media_files`, and can take a long time.
+  `docker-compose-dev.yaml`. Production runs the GHCR image `ghcr.io/fixfever/sleepless`; it does not
+  bind-mount the repository. Do not use dev-compose targets for production deployment.
+- `.github/workflows/deploy.yml` builds the Dockerfile `base` target, publishes both the commit SHA and
+  `main` tags, then pulls the exact commit image on the Windows host at `C:\apps\sleepless`. The `base`
+  target excludes Whisper/PyTorch; use the `full` target only if Whisper transcription is intentionally
+  enabled. Old GHCR package versions are cleaned up after deployment, retaining the 10 newest versions.
+- Production data remains outside the image: media is bind-mounted from `M:\mediacms`, and logs use
+  the external Docker volume `mediacms_logs`. Preserve both when updating or recreating services; the
+  external `server_default` network must also exist.
+- Runtime settings come from the deployment `.env` and the tracked
+  `deploy/docker/local_settings.py` included in the image. The entrypoint copies the latter to
+  `cms/local_settings.py`; do not add a host bind mount for the repository or generated settings file.
+- Private GHCR pulls require a `read:packages` login configured for the same Windows account used by
+  the SSH deployment. Docker Desktop's credential helper may fail in non-interactive SSH sessions;
+  keep the deployment account's Docker CLI credentials usable without that helper.
+- The deployment workflow pulls the image and runs `docker compose up -d --no-build`; do not build the
+  production image on the Windows host. Continue incrementing the fourth `cms/version.py` component
+  when frontend asset URLs need cache invalidation.
 
 ## Tests
 
@@ -126,10 +140,9 @@ React is used as a library embedded in Django templates, not as a standalone SPA
   `make build-frontend` target uses `docker-compose-dev.yaml`; it is not suitable for this fork's
   deployment unless that dev frontend service is intentionally configured and running. Copying only a
   page bundle can leave it incompatible with `_commons.js`.
-- A local `npm install` creates `frontend/node_modules/` inside the bind-mounted tree. The container
-  entrypoint also scans that tree on a full restart; if dependencies were installed only to build, remove
-  build-only `node_modules/` and `dist/` after copying the output, or restart Gunicorn without restarting
-  the container.
+- In the dev compose setup, a local `npm install` creates `frontend/node_modules/` inside the
+  bind-mounted tree. If dependencies were installed only to build, remove build-only `node_modules/`
+  and `dist/` after copying the output. Production uses the built image, not this source mount.
 - Never hand-edit generated bundles in `static/`; change the source and rebuild.
 
 ## Commits and releases
@@ -148,8 +161,8 @@ React is used as a library embedded in Django templates, not as a standalone SPA
 
 ## Gotchas
 
-- `.github/` is gitignored in this fork; there are no checked-in CI workflows or PR templates, and this
-  installation has no automated release pipeline.
+- `.github/` is mostly gitignored in this fork; `.github/workflows/deploy.yml` is explicitly unignored
+  and tracked. There are no checked-in PR templates or automated release/versioning job.
 - `README.md` is intentionally minimal; real documentation lives in `docs/` (`dev_exp.md`,
   `developers_docs.md`, `media_permissions.md`, migration guides).
 - `templates/` and `static/` are committed products; a change to frontend code is incomplete until the
