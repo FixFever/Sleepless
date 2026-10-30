@@ -1,5 +1,27 @@
+# docker compose -f docker-compose-dev.yaml up --build
+
+name: sleepless-dev
+
 services:
-  migrations:
+  frontend:
+    image: node:24
+    container_name: frontend
+    volumes:
+      - ./frontend:/home/mediacms.io/mediacms/frontend/
+      - frontend_node_modules:/home/mediacms.io/mediacms/frontend/node_modules
+      - frontend_npm_cache:/home/node/.npm
+    working_dir: /home/mediacms.io/mediacms/frontend/
+    command: bash -c "npm install --cache /home/node/.npm && npm run start"
+    env_file:
+      - ./frontend/.env
+    environment:
+      WATCHPACK_POLLING: '1000'
+    ports:
+      - "127.0.0.1:8088:8088"
+    depends_on:
+      - web
+
+  web:
     build:
       context: .
       dockerfile: ./Dockerfile
@@ -7,81 +29,34 @@ services:
       args:
         - DEVELOPMENT_MODE=True
     image: mediacms/mediacms-dev:latest
-    volumes:
-      - ./:/home/mediacms.io/mediacms/
-    command: "./deploy/docker/prestart.sh"
-    environment:
-      DEVELOPMENT_MODE: True
-      ENABLE_UWSGI: 'no'
-      ENABLE_NGINX: 'no'
-      ENABLE_CELERY_SHORT: 'no'
-      ENABLE_CELERY_LONG: 'no'
-      ENABLE_CELERY_BEAT: 'no'
-      ADMIN_USER: 'admin'
-      ADMIN_EMAIL: 'admin@localhost'
-      ADMIN_PASSWORD: 'admin'
-    restart: on-failure
-    depends_on:
-      redis:
-        condition: service_healthy
-      db:
-        condition: service_healthy
-  frontend:
-    image: node:24
-    volumes:
-      - ${PWD}/frontend:/home/mediacms.io/mediacms/frontend/
-    working_dir: /home/mediacms.io/mediacms/frontend/
-    command: bash -c "npm install && npm run start"
-    env_file:
-      - ${PWD}/frontend/.env
-    ports:
-      - "8088:8088"
-    depends_on:
-      - web
-  web:
-    image: mediacms/mediacms-dev:latest
+    container_name: web
     command: "python manage.py runserver 0.0.0.0:80"
     environment:
-      DEVELOPMENT_MODE: True
-    ports:
-      - "80:80"
-    volumes:
-      - ./:/home/mediacms.io/mediacms/
-    depends_on:
-      - migrations
-  db:
-    image: postgres:17.2-alpine
-    volumes:
-      - ../postgres_data:/var/lib/postgresql/data/
-    restart: always
-    environment:
-      POSTGRES_USER: mediacms
-      POSTGRES_PASSWORD: mediacms
-      POSTGRES_DB: mediacms
-      TZ: Europe/London
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-  redis:
-    image: "redis:alpine"
-    restart: always
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-  celery_worker:
-    image: mediacms/mediacms-dev:latest
-    deploy:
-      replicas: 1
-    volumes:
-      - ./:/home/mediacms.io/mediacms/
-    environment:
-      ENABLE_UWSGI: 'no'
-      ENABLE_NGINX: 'no'
-      ENABLE_CELERY_BEAT: 'no'
+      DEVELOPMENT_MODE: 'True'
       ENABLE_MIGRATIONS: 'no'
-    depends_on:
-      - web
+      POSTGRES_HOST: '${POSTGRES_HOST:-postgres}'
+      POSTGRES_DB: '${POSTGRES_DB:-mediacms}'
+      POSTGRES_USER: '${POSTGRES_USER:?Set POSTGRES_USER in the env file}'
+      POSTGRES_PASSWORD: '${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in the env file}'
+      SECRET_KEY: '${SLEEPLESS_SECRET_KEY:?Set SLEEPLESS_SECRET_KEY in the env file}'
+      REDIS_LOCATION: '${DEV_REDIS_LOCATION:-redis://redis:6379/2}'
+      EMAIL: '${EMAIL:-}'
+      EMAIL_PASSWORD: '${EMAIL_PASSWORD:-}'
+    ports:
+      - "127.0.0.1:8081:80"
+    volumes:
+      - ./:/home/mediacms.io/mediacms/
+      - M:\\mediacms:/home/mediacms.io/mediacms/media_files
+    networks:
+      - default
+      - server_default
+
+volumes:
+  frontend_node_modules:
+    external: true
+  frontend_npm_cache:
+    external: true
+
+networks:
+  server_default:
+    external: true

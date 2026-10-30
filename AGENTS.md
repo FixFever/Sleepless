@@ -41,13 +41,27 @@ follow. Read the relevant plan before changing a feature it covers.
 ## Local development
 
 ```sh
-docker compose -f docker-compose-dev.yaml up       # Django on :80 (admin/admin), React on :8088
-make admin-shell                                   # bash inside the web container
+docker compose -f docker-compose-dev.yaml up --build  # Django on :8081, React on :8088
+docker compose -f docker-compose-dev.yaml exec web /bin/bash
 docker compose -f docker-compose-dev.yaml restart web   # after a hard Django crash
 ```
 
-Django auto-releases changed Python code. The React dev server hot-reloads but cannot handle POST
-requests and has partial CORS support, so verify writes against the main app on port 80.
+Django auto-reloads changed Python code. The React dev server hot-reloads at :8088; it can have
+POST/CORS issues, so verify writes against the dev Django service directly on :8081.
+The dev stack shares the production PostgreSQL database and `M:\mediacms` media mount; it disables
+automatic migrations and uses Redis DB `/2` rather than production's `/1`. It has no Celery worker,
+so dev background tasks remain queued. Dev writes still modify production data. Keep the local
+production `.env` out of Git.
+
+### Frontend publish gate
+
+- During feature work, use the dev server and leave generated production assets alone.
+- Only after the user explicitly approves publication (for example, says **"можно публиковать"**),
+  follow `docs/frontend-publishing.md`: build the changed frontend package(s), copy generated assets
+  into `static/`, bump the fourth `cms/version.py` component once, and review the diff.
+- Never commit or push unless explicitly asked. The user pushes; a push to `main` runs the GHCR
+  image build and production deployment. Do not use the legacy
+  `deploy/scripts/build_and_deploy.sh` script.
 
 ### This fork's deployment
 

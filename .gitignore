@@ -41,6 +41,8 @@ celerybeat-schedule-wal
 templates/todo-MS4.md
 .secret_key
 .secret_key.lock
+/.env
+/.env.dev
 /.github/*
 !/.github/workflows/
 /.github/workflows/*
